@@ -9,7 +9,7 @@
 ## Features
 
 - **CPU and RAM Monitoring**: Displays real-time CPU and RAM usage.
-- **Weather Updates**: Get updated weather data every 5 hours using the Open Meteo API.
+- **Weather Updates**: Get updated weather data every 5 hours using the [Open Meteo API](https://open-meteo.com).
 - **Task Notes**: Manage your task notes directly from the desktop.
 - **Flexible Configuration**: Customize the project settings through a user-friendly graphical interface.
 
