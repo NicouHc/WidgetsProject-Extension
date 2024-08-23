@@ -19,5 +19,7 @@
 
 - **On the Wallpaper Side**: The wallpaper will refresh the content of the JavaScript file at regular intervals, allowing it to receive updates to the variable's values. This ensures that the most current CPU and memory usage information is displayed on the screen in real-time.
 
+- [How to Use Video](https://www.youtube.com/watch?v=OtQNoA5UDH8)
+
 ## More
 if you have any question you can join our [Discord](https://discord.com/invite/63EUyQBZPm) or leave a comment on the wallpaper ❤️
