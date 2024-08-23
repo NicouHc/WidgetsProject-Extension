@@ -29,16 +29,16 @@ currentPath =  os.path.dirname(sys.argv[0])
 
 
 def hide_console():
-    #Oculta la ventana de la consola en Windows.
+    #Hidde window console
     
-    hwnd = ctypes.windll.kernel32.GetConsoleWindow()  # Obtiene el identificador de la ventana de la consola
+    hwnd = ctypes.windll.kernel32.GetConsoleWindow()
     if hwnd != 0:
         ctypes.windll.user32.ShowWindow(hwnd, 0)  # SW_HIDE = 0
 
 def show_console():
-    #Muestra la ventana de la consola en Windows.
+    #Show Console
    
-    hwnd = ctypes.windll.kernel32.GetConsoleWindow()  # Obtiene el identificador de la ventana de la consola
+    hwnd = ctypes.windll.kernel32.GetConsoleWindow() 
     if hwnd != 0:
         ctypes.windll.user32.ShowWindow(hwnd, 5)  # SW_SHOW = 5
 
@@ -52,14 +52,14 @@ def obtener_info(intervalo=1):
         uso_ram = psutil.virtual_memory().percent
         
 
-        # Generar el contenido del archivo JS
+        # Generate the content on js
         js_content = f"var pc_info = [{uso_cpu }, {uso_ram}];\n"
 
-        # Escribir los valores en el archivo pc-info.js
+        # write values on the file pc-info.js
         with open(wallpaperPath + '/files/info/' + 'pc-info.js', 'w') as file:
             file.write(js_content)
 
-        time.sleep(1)  # Pausa de x segundos
+        time.sleep(1)  # zzz
 
 # -----------------------
 # weather
@@ -72,13 +72,13 @@ def weather():
     while running:
         try:
             response = requests.get(api_url)
-            response.raise_for_status()  # Lanza un error si la solicitud falla
+            response.raise_for_status()  # display error if fail
             weather_data = response.json()
             
-            # Convertir el JSON a un formato JavaScript
+            # convert JSON to js format
             js_content = f"var weather_data = {json.dumps(weather_data, indent=4)};\n"
             
-            # Guardar el JS en un archivo
+            # save js as file
             with open(wallpaperPath + '/files/info/' + 'weather-data.js', 'w') as file:
                 file.write(js_content)
             
@@ -126,7 +126,7 @@ def abrir_configuracion():
                 "start_on_startup": start_on_startup
             }
             save_settings(currentPath + '/settings.json', settings)
-            set_startup(start_on_startup)  # Configura el inicio automático
+            set_startup(start_on_startup)  # config startup
             ventana.destroy()
         else:
             ctk.CTkMessageBox.show_error("Error", "Invalid Path.")
@@ -135,19 +135,18 @@ def abrir_configuracion():
     ventana.title("Widgets Project - Settings")
     ventana.iconbitmap(currentPath + "/icon.ico")  
     
-    # Ajusta el tamaño de la ventana
-    ventana.geometry("430x200")  # Aumenta el tamaño para incluir el checkbox
+    ventana.geometry("430x200")  
 
     ctk.CTkLabel(ventana, text="Wallpaper Directory:").grid(row=0, column=0, padx=10, pady=5)
-    entry_directory = ctk.CTkEntry(ventana, width=250)  # Aumenta el ancho del campo de entrada
+    entry_directory = ctk.CTkEntry(ventana, width=250) 
     entry_directory.grid(row=0, column=1, padx=10, pady=5)
 
     ctk.CTkLabel(ventana, text="Latitude:").grid(row=1, column=0, padx=10, pady=5)
-    entry_latitude = ctk.CTkEntry(ventana, width=250)  # Aumenta el ancho del campo de entrada
+    entry_latitude = ctk.CTkEntry(ventana, width=250)  
     entry_latitude.grid(row=1, column=1, padx=10, pady=5)
 
     ctk.CTkLabel(ventana, text="Longitude:").grid(row=2, column=0, padx=10, pady=5)
-    entry_longitude = ctk.CTkEntry(ventana, width=250)  # Aumenta el ancho del campo de entrada
+    entry_longitude = ctk.CTkEntry(ventana, width=250)
     entry_longitude.grid(row=2, column=1, padx=10, pady=5)
 
     var_startup = ctk.BooleanVar()
@@ -155,7 +154,7 @@ def abrir_configuracion():
 
     ctk.CTkButton(ventana, text="Save", command=guardar_configuracion).grid(row=4, column=0, columnspan=2, pady=10)
 
-    # Rellena los campos con los valores actuales
+    # 
     entry_directory.insert(0, wallpaperPath)
     entry_latitude.insert(0, latitude)
     entry_longitude.insert(0, longitude)
@@ -164,27 +163,27 @@ def abrir_configuracion():
     ventana.mainloop()
 
 def set_startup(enable):
-    #Configura el programa para que inicie con Windows o desactiva el inicio automático.
+    # define start program on pc startup
 
-    script_path = sys.argv[0]  # Obtiene la ruta absoluta del script
+    script_path = sys.argv[0]  # Obtain .exe path
     
     key = r"Software\Microsoft\Windows\CurrentVersion\Run"
-    value = "WidgetsProjectExtension"  # Nombre que aparecerá en el registro
+    value = "WidgetsProjectExtension"  # define registry name
 
     try:
-        # Abre la clave del registro
+        # open registry key
         reg_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key, 0, winreg.KEY_SET_VALUE)
         
         if enable:
-            # Establece el valor del registro para que el programa inicie con Windows
+            # define value
             winreg.SetValueEx(reg_key, value, 0, winreg.REG_SZ, script_path)
             print("Program set to start with Windows.")
         else:
-            # Elimina el valor del registro para desactivar el inicio automático
+            # delete the registry if is false
             winreg.DeleteValue(reg_key, value)
             print("Program removed from startup.")
         
-        # Cierra la clave del registro
+        # close registry
         winreg.CloseKey(reg_key)
     except Exception as e:
         print(f"Error: {e}")
@@ -211,7 +210,7 @@ def crear_ventana_notas():
     boton_guardar = ctk.CTkButton(ventana, text="Save Notes", command=guardar_notas)
     boton_guardar.pack(pady=5)
 
-    # Rellena el área de texto con el contenido actual
+    # Fill textarea with the content
     if isinstance(notes_text, list):
         text_area.insert("1.0", "\n".join(notes_text))
     else:
@@ -220,20 +219,20 @@ def crear_ventana_notas():
     ventana.mainloop()
 
 def leer_notas_js():
-    #Lee el archivo notas.js y actualiza la variable global notes_text
+    # read notes.json and update globals
     global notes_text
     try:
         with open(wallpaperPath + "/files/info/" + "ToDoNotes.js", "r") as file:
             contenido = file.read()
-            # Encuentra el inicio y fin del contenido del array
+            # start and end array
             start = contenido.find('[')
             end = contenido.rfind(']')
             
             if start != -1 and end != -1:
-                # Extrae el contenido del array
+                # obtain text content
                 array_texto = contenido[start:end + 1]
                 try:
-                    # Usa json.loads para convertir el contenido en una lista
+                    # Usa json.loads to convert the content in list
                     notes_text = json.loads(array_texto)
                 except json.JSONDecodeError:
                     notes_text = []
@@ -243,17 +242,17 @@ def leer_notas_js():
         notes_text = []
 
 def actualizar_notas_js(array_notas):
-    #Guarda un array de notas en un archivo JS
+    # save array in js
     with open(wallpaperPath + "/files/info/" + "ToDoNotes.js", "w") as file:
-        # Convierte el array de notas a una cadena de texto en formato de array JavaScript
+        # Convert the notes array to a text string in JavaScript array format
         notas_js = json.dumps(array_notas, ensure_ascii=False)
         file.write(f'var todoNotes = {notas_js};\n')
 
 def guardar_notas():
-    #Obtiene el texto del widget y actualiza el archivo JS
+    # Gets the widget text and updates the JS file
     global notes_text
     notas_texto = text_area.get("1.0", "end").strip()
-    # Divide el texto en líneas y las convierte en un array de notas
+    # Splits text into lines and converts them into an array of notes
     notas_array = notas_texto.split('\n')
     if notas_array:
         notes_text = notas_texto
@@ -267,7 +266,7 @@ def show_help_window():
     help_window.geometry("420x130")
     help_window.iconbitmap(currentPath + "/icon.ico")  
 
-    # Descripción de la aplicación
+    # Title
     description_label = ctk.CTkLabel(help_window, text="Widgets Project Extension for WallpaperEngine ")
     description_label.pack(pady=20)
 
@@ -279,9 +278,11 @@ def show_help_window():
     button_frame = ctk.CTkFrame(help_window)
     button_frame.pack(pady=10)
 
+    # <4
     join_button = ctk.CTkButton(button_frame, text="Join our Discord", command=lambda: openLink("https://discord.com/invite/63EUyQBZPm"))
     join_button.pack(side="left", padx=10)
 
+    # ;)
     join_button2 = ctk.CTkButton(button_frame, text="Buy me a Coffee", command=lambda: openLink("https://www.paypal.com/donate/?hosted_button_id=UBDDRKEZ4XABE"))
     join_button2.pack(side="left", padx=10)
 
@@ -294,7 +295,7 @@ def preLoad():
     settings = load_settings(file_path)
 
     if not settings:
-        abrir_configuracion()  # Solo abre la configuración si no hay configuraciones guardadas
+        abrir_configuracion()  # just open settings if there are no saved settings
     menu()
 
 def exit_app(icon):
@@ -347,5 +348,6 @@ if __name__ == "__main__":
         menu()  # display menu
     except Exception as e:
         show_console()
+        print("")
         print(f"An error occurred: {e}")
         input("Press Enter to exit...")
