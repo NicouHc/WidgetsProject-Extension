@@ -22,7 +22,18 @@ longitude = ""
 wallpaperPath = ""
 notes_text = ""
 start_on_startup = False 
-currentPath =  os.path.dirname(sys.argv[0])
+
+# -----------------------
+# define current path
+
+def obtain_current_dir():
+    if getattr(sys, 'frozen', False):
+        # if the file is .exe
+        return os.path.dirname(sys.argv[0])
+    else:
+        # if file is .py script
+        return os.path.dirname(os.path.abspath(__file__))
+currentPath = obtain_current_dir()
 
 
 # -----------------------
@@ -55,6 +66,8 @@ def obtener_info(intervalo=1):
         # Generate the content on js
         js_content = f"var pc_info = [{uso_cpu }, {uso_ram}];\n"
 
+        os.makedirs(os.path.dirname(wallpaperPath + '/files/info/'+ 'pc-info.js'), exist_ok=True)
+
         # write values on the file pc-info.js
         with open(wallpaperPath + '/files/info/' + 'pc-info.js', 'w') as file:
             file.write(js_content)
@@ -76,7 +89,7 @@ def weather():
             weather_data = response.json()
             
             # convert JSON to js format
-            js_content = f"var weather_data = {json.dumps(weather_data, indent=4)};\n"
+            js_content = f"var weather_data = [{json.dumps(weather_data, indent=4)}];\n"
             
             # save js as file
             with open(wallpaperPath + '/files/info/' + 'weather-data.js', 'w') as file:
@@ -114,18 +127,19 @@ def abrir_configuracion():
     def guardar_configuracion():
         global wallpaperPath, latitude, longitude, start_on_startup
         directory = entry_directory.get()
-        latitud = entry_latitude.get()
-        longitud = entry_longitude.get()
+        latitude = entry_latitude.get()
+        longitude = entry_longitude.get()
         start_on_startup = var_startup.get()
+
 
         if os.path.exists(directory + "/files/info"):
             settings = {
                 "directory": directory,
-                "longitud": longitud,
-                "latitud": latitud,
+                "longitud": longitude,
+                "latitud": latitude,
                 "start_on_startup": start_on_startup
             }
-            save_settings(currentPath + '/settings.json', settings)
+            save_settings(currentPath + '/settings.json', settings) # save settings json
             set_startup(start_on_startup)  # config startup
             ventana.destroy()
         else:
