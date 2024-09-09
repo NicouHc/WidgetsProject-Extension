@@ -61,6 +61,7 @@ def show_console():
         ctypes.windll.user32.ShowWindow(hwnd, 5)  # SW_SHOW = 5
 
 def print_Error(e):
+    show_console()
     os.system("title Widgets Project && cls")
     print("")
     print(style.RED + " [i] An error occurred " + style.ENDC);
@@ -409,5 +410,4 @@ if __name__ == "__main__":
         preLoad()  # load settings
         menu()  # display menu
     except Exception as e: 
-        show_console()
         print_Error(e)
