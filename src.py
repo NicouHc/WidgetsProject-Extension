@@ -35,9 +35,13 @@ def obtain_current_dir():
         return os.path.dirname(os.path.abspath(__file__))
 currentPath = obtain_current_dir()
 
-
 # -----------------------
+# console
 
+class style(): # class styles for console message with colors'
+    WARNING = '\033[31m'
+    ENDC = '\033[0m'
+    OKBLUE = '\033[94m'
 
 def hide_console():
     #Hidde window console
@@ -126,15 +130,15 @@ def save_settings(file_path, settings):
 def abrir_configuracion():
     def guardar_configuracion():
         global wallpaperPath, latitude, longitude, start_on_startup
-        directory = entry_directory.get()
+        wallpaperPath = entry_directory.get()
         latitude = entry_latitude.get()
         longitude = entry_longitude.get()
         start_on_startup = var_startup.get()
 
 
-        if os.path.exists(directory + "/files/info"):
+        if os.path.exists(wallpaperPath + "/files/info"):
             settings = {
-                "directory": directory,
+                "directory": wallpaperPath,
                 "longitud": longitude,
                 "latitud": latitude,
                 "start_on_startup": start_on_startup
@@ -142,8 +146,25 @@ def abrir_configuracion():
             save_settings(currentPath + '/settings.json', settings) # save settings json
             set_startup(start_on_startup)  # config startup
             ventana.destroy()
+
+        elif (os.path.exists(wallpaperPath + "/a.html") == False and  os.path.exists(wallpaperPath + "/files") == True):
+            # preset error
+            show_console()
+            os.system("title Widgets Project && cls")
+            print(style.WARNING + "[i] Error - Invalid Path. " + style.ENDC);
+            print("")
+            print(style.ENDC + " This is a " + style.WARNING + "Preset Folder"+ style.ENDC + ", find "+ style.OKBLUE +" WidgetsProject"+ style.ENDC +" folder. " + style.ENDC)
+            print(" Simple Tutorial: " + style.OKBLUE + " https://www.youtube.com/watch?v=UxucvweQ_xY " + style.ENDC)
+            print("")
+            os.system("pause")
+            os._exit(0)
         else:
-            ctk.CTkMessageBox.show_error("Error", "Invalid Path.")
+            # invalid path
+            show_console()
+            os.system("title Widgets Project && cls")
+            print(style.WARNING + "[i] Error - Invalid Path." + style.ENDC)
+            os.system("pause")
+            os._exit(0)
 
     ventana = ctk.CTk()
     ventana.title("Widgets Project - Settings")
@@ -323,7 +344,7 @@ def menu():
     cpuUsage = threading.Thread(target=obtener_info)
     weatherRefresh = threading.Thread(target=weather)
     
-    os.system("title . && cls")
+    os.system("title Widgets Project && cls")
 
     def start_threads():
         global running
