@@ -38,10 +38,13 @@ currentPath = obtain_current_dir()
 # -----------------------
 # console
 
-class style(): # class styles for console message with colors'
-    WARNING = '\033[31m'
+class style(): 
+    # class styles for console message with colors
+    RED = '\033[31m'
+    YELLOW = '\033[33m'
     ENDC = '\033[0m'
     OKBLUE = '\033[94m'
+    DIV = '\033[100m \033[90m'
 
 def hide_console():
     #Hidde window console
@@ -56,6 +59,18 @@ def show_console():
     hwnd = ctypes.windll.kernel32.GetConsoleWindow() 
     if hwnd != 0:
         ctypes.windll.user32.ShowWindow(hwnd, 5)  # SW_SHOW = 5
+
+def print_Error(e):
+    os.system("title Widgets Project && cls")
+    print("")
+    print(style.RED + " [i] An error occurred " + style.ENDC);
+    print("")
+    print(style.DIV + "|                                                                            |"+ style.ENDC)
+    print("")
+    print(f"{e}")
+    print("")
+    print(style.DIV + "|                                                                            |"+ style.ENDC)
+    input("Press Enter to exit...")
 
 # -----------------------
 # CUP RAM Usage
@@ -151,10 +166,15 @@ def abrir_configuracion():
             # preset error
             show_console()
             os.system("title Widgets Project && cls")
-            print(style.WARNING + "[i] Error - Invalid Path. " + style.ENDC);
             print("")
-            print(style.ENDC + " This is a " + style.WARNING + "Preset Folder"+ style.ENDC + ", find "+ style.OKBLUE +" WidgetsProject"+ style.ENDC +" folder. " + style.ENDC)
-            print(" Simple Tutorial: " + style.OKBLUE + " https://www.youtube.com/watch?v=UxucvweQ_xY " + style.ENDC)
+            print(style.RED + " [i] Error - Invalid Path. " + style.ENDC);
+            print("")
+            print(style.ENDC + " This is a " + style.RED + "Preset Folder"+ style.ENDC + ", find "+ style.OKBLUE +" WidgetsProject"+ style.ENDC +" folder. " + style.ENDC)
+            print("")
+            print(" Simple Tutorial: "+ style.ENDC)
+            print(" 1- Open " + style.OKBLUE + "Wallpaper Engine."  + style.ENDC)
+            print(" 2- Find the wallpaper called " + style.OKBLUE + "Widgets Project." + style.ENDC)
+            print(" 3- Second Click over it and select the option " + style.YELLOW + "'Open in Explorer'. " + style.ENDC)
             print("")
             os.system("pause")
             os._exit(0)
@@ -162,7 +182,14 @@ def abrir_configuracion():
             # invalid path
             show_console()
             os.system("title Widgets Project && cls")
-            print(style.WARNING + "[i] Error - Invalid Path." + style.ENDC)
+            print("")
+            print(style.RED + " [i] Error - Invalid Path. " + style.ENDC);
+            print("")
+            print(" Simple Tutorial: "+ style.ENDC)
+            print(" 1- Open " + style.OKBLUE + "Wallpaper Engine."  + style.ENDC)
+            print(" 2- Find the wallpaper called " + style.OKBLUE + "Widgets Project." + style.ENDC)
+            print(" 3- Second Click over it and select the option " + style.YELLOW + "'Open in Explorer'. " + style.ENDC)
+            print("")
             os.system("pause")
             os._exit(0)
 
@@ -221,7 +248,7 @@ def set_startup(enable):
         # close registry
         winreg.CloseKey(reg_key)
     except Exception as e:
-        print(f"Error: {e}")
+        print_Error(e)
 
 
 # -----------------------
@@ -381,8 +408,6 @@ if __name__ == "__main__":
         hide_console()
         preLoad()  # load settings
         menu()  # display menu
-    except Exception as e:
+    except Exception as e: 
         show_console()
-        print("")
-        print(f"An error occurred: {e}")
-        input("Press Enter to exit...")
+        print_Error(e)
