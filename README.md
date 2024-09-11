@@ -1,5 +1,3 @@
-# Widgets Project Extension
-
 ![Logo](/resources/banner.png)
 
 ## Description
