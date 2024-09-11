@@ -1,6 +1,6 @@
 # Widgets Project Extension
 
-![Logo](icon.ico)
+![Logo](/resources/banner.png)
 
 ## Description
 
