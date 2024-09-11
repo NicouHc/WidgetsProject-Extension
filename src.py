@@ -20,7 +20,7 @@ Latest Changelog (11/09/2024):
 - Fixed error in set_startup when trying to delete a non-existent registry key
 - New ui and icon
 - added 'Report on discord' on print_Error
-- added 'New version avaible' notification
+- added 'New version Available' notification
 
 """
 
@@ -374,7 +374,7 @@ def mainPanel(mostrar): #ui menu
     btn_exit.pack(fill='x', padx=10, pady=5, side='bottom')
 
     if(version != getCurrentVersion()): # if version is diferent than latest version -> display button
-        btn_update = ctk.CTkButton(sidebar, text="New Version Avaible", image=icon_new, command=lambda: openLink("https://github.com/NicouHc/WidgetsProject-Extension"), **button_style_new_Version)
+        btn_update = ctk.CTkButton(sidebar, text="New Version Available", image=icon_new, command=lambda: openLink("https://github.com/NicouHc/WidgetsProject-Extension"), **button_style_new_Version)
         btn_update.pack(fill='x', padx=10, pady=5, side='bottom')
 
 
