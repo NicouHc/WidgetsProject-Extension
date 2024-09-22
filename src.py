@@ -15,26 +15,27 @@ import winreg
 import sys
 
 """
-Latest Changelog (11/09/2024):
+Latest Changelog (22/09/2024):
 
-- Fixed error in set_startup when trying to delete a non-existent registry key
-- New ui and icon
-- added 'Report on discord' on print_Error
-- added 'New version Available' notification
+- added option to display the weather degrees on fahrenheit
+- fixed issue related with don't display font on windows white theme 
+- fixed Dont read previous notes at open the Notes Ui
+- Notes support special characters
 
 """
 
 # -----------------------
 # define var
 running = True
-global latitude, longitude, wallpaperPath, notes_text, start_on_startup
+global latitude, longitude, wallpaperPath, notes_text, start_on_startup, fahrenheit
 latitude = ""
 longitude = ""
 wallpaperPath = ""
 notes_text = ""
 start_on_startup = False 
+fahrenheit = False
 
-version = "2.0.0"
+version = "2.0.1"
 
 def obtain_current_dir():# define current path
     if getattr(sys, 'frozen', False):
@@ -102,7 +103,7 @@ def getCurrentVersion():# return current version for notify updates
 def leer_notas_js():# read notes.json and update globals
     global notes_text
     try:
-        with open(wallpaperPath + "/files/info/" + "ToDoNotes.js", "r") as file:
+        with open(wallpaperPath + "/files/info/" + "ToDoNotes.js", "r", encoding="utf-8") as file:
             contenido = file.read()
             # start and end array
             start = contenido.find('[')
@@ -123,7 +124,7 @@ def leer_notas_js():# read notes.json and update globals
 
 def actualizar_notas_js(array_notas):# save notes
     # save array in js
-    with open(wallpaperPath + "/files/info/" + "ToDoNotes.js", "w") as file:
+    with open(wallpaperPath + "/files/info/" + "ToDoNotes.js", "w", encoding="utf-8") as file:
         # Convert the notes array to a text string in JavaScript array format
         notas_js = json.dumps(array_notas, ensure_ascii=False)
         file.write(f'var todoNotes = {notas_js};\n')
@@ -144,11 +145,12 @@ def load_settings(file_path):#  load json settings
         with open(file_path, 'r') as file:
             settings = json.load(file)
 
-            global wallpaperPath, latitude, longitude, start_on_startup
+            global wallpaperPath, latitude, longitude, start_on_startup, fahrenheit
             wallpaperPath = settings['directory']
             latitude = settings['latitud']
             longitude = settings['longitud']
             start_on_startup = settings.get('start_on_startup', False)
+            fahrenheit =  settings.get('fahrenheit', False)
             return settings
     else:
         return None
@@ -208,8 +210,14 @@ def obtener_info(intervalo=1):# computer usage
         time.sleep(1)  # zzz
 
 def weather():# weather
-    global latitude, longitude
-    api_url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,rain,snowfall,wind_speed_10m&daily=&past_days=1"
+    global latitude, longitude,fahrenheit
+
+    if(fahrenheit):
+        vfahrenheit = "temperature_unit=fahrenheit&"
+    else:
+        vfahrenheit = ""
+
+    api_url = f"https://api.open-meteo.com/v1/forecast?{vfahrenheit}latitude={latitude}&longitude={longitude}&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,rain,snowfall,wind_speed_10m&daily=&past_days=1"
     contador = 0
 
     global running
@@ -238,18 +246,20 @@ def weather():# weather
 # MAIN WINDOW #############################################################################
 def mainPanel(mostrar): #ui menu
     def guardar_configuracion():# function save text input in to json
-        global wallpaperPath, latitude, longitude, start_on_startup
+        global wallpaperPath, latitude, longitude, start_on_startup, fahrenheit
         wallpaperPath = entry_directory.get()
         latitude = entry_latitude.get()
         longitude = entry_longitude.get()
         start_on_startup = var_startup.get()
+        fahrenheit = var_fahrenheit.get()
 
         if os.path.exists(wallpaperPath + "/files/info"):
             settings = {
                 "directory": wallpaperPath,
                 "longitud": longitude,
                 "latitud": latitude,
-                "start_on_startup": start_on_startup
+                "start_on_startup": start_on_startup,
+                "fahrenheit": fahrenheit
             }
             save_settings(currentPath + '/settings.json', settings) # save settings json
             set_startup(start_on_startup)  # config startup
@@ -289,6 +299,8 @@ def mainPanel(mostrar): #ui menu
         for p in [panel_inicio, panel_notas, panel_ajustes]:
             p.pack_forget()
         panel.pack(fill='both', expand=True)
+
+    leer_notas_js() #updated textarea content
 
     root = ctk.CTk()
     root.title("WidgetsProject Extension")
@@ -431,7 +443,7 @@ def mainPanel(mostrar): #ui menu
     divider = ctk.CTkFrame(panel_ajustes, height=2, fg_color="grey")
     divider.grid(row=1, column=2, sticky="ew", padx=0, pady=10)
 
-    ctk.CTkLabel(panel_ajustes, text="Wallpaper Directory:").grid(row=2, column=0, padx=10, pady=5)
+    ctk.CTkLabel(panel_ajustes, text="Wallpaper Directory:", text_color="white").grid(row=2, column=0, padx=10, pady=5)
     entry_directory = ctk.CTkEntry(panel_ajustes, width=250, **text_input_Style) 
     entry_directory.grid(row=2, column=1, padx=10, pady=5)
     
@@ -442,30 +454,35 @@ def mainPanel(mostrar): #ui menu
     divider = ctk.CTkFrame(panel_ajustes, height=2, fg_color="grey")
     divider.grid(row=3, column=2, sticky="ew", padx=0, pady=10)
 
-    ctk.CTkLabel(panel_ajustes, text="Latitude:").grid(row=4, column=0, padx=10, pady=5)
+    ctk.CTkLabel(panel_ajustes, text="Weather Latitude:", text_color="white").grid(row=4, column=0, padx=10, pady=5)
     entry_latitude = ctk.CTkEntry(panel_ajustes, width=250, **text_input_Style)  
     entry_latitude.grid(row=4, column=1, padx=10, pady=5)
 
-    ctk.CTkLabel(panel_ajustes, text="Longitude:").grid(row=5, column=0, padx=10, pady=5)
+    ctk.CTkLabel(panel_ajustes, text="Weather Longitude:", text_color="white").grid(row=5, column=0, padx=10, pady=5)
     entry_longitude = ctk.CTkEntry(panel_ajustes, width=250, **text_input_Style)
     entry_longitude.grid(row=5, column=1, padx=10, pady=5)
 
+    var_fahrenheit = ctk.BooleanVar()
+    ctk.CTkCheckBox(panel_ajustes, text="Degrees in Fahrenheit", variable=var_fahrenheit, text_color="white").grid(row=6, column=0, columnspan=2, pady=10)
+    
+
     divider = ctk.CTkFrame(panel_ajustes, height=2, fg_color="grey")
-    divider.grid(row=6, column=0, sticky="ew", padx=0, pady=10)
+    divider.grid(row=7, column=0, sticky="ew", padx=0, pady=10)
     divider = ctk.CTkFrame(panel_ajustes, height=2, fg_color="grey")
-    divider.grid(row=6, column=1, sticky="ew", padx=0, pady=10)
+    divider.grid(row=7, column=1, sticky="ew", padx=0, pady=10)
     divider = ctk.CTkFrame(panel_ajustes, height=2, fg_color="grey")
-    divider.grid(row=6, column=2, sticky="ew", padx=0, pady=10)
+    divider.grid(row=7, column=2, sticky="ew", padx=0, pady=10)
 
     var_startup = ctk.BooleanVar()
-    ctk.CTkCheckBox(panel_ajustes, text="Start on Windows Startup", variable=var_startup).grid(row=7, column=0, columnspan=2, pady=10)
+    ctk.CTkCheckBox(panel_ajustes, text="Start on Windows Startup", variable=var_startup, text_color="white").grid(row=8, column=0, columnspan=2, pady=10)
     
-    ctk.CTkButton(panel_ajustes, text="Save", command=guardar_configuracion, **button_style_2).grid(row=8, column=0, columnspan=2, pady=10)
+    ctk.CTkButton(panel_ajustes, text="Save", command=guardar_configuracion, **button_style_2).grid(row=9, column=0, columnspan=2, pady=10)
     # --------------------
     entry_directory.insert(0, wallpaperPath)
     entry_latitude.insert(0, latitude)
     entry_longitude.insert(0, longitude)
     var_startup.set(start_on_startup)
+    var_fahrenheit.set(fahrenheit)
 
     # cup usage
     threading.Thread(target=obtener_info, daemon=True).start()
