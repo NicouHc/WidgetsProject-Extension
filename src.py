@@ -17,10 +17,8 @@ import sys
 """
 Latest Changelog (22/09/2024):
 
-- added option to display the weather degrees on fahrenheit
-- fixed issue related with don't display font on windows white theme 
-- fixed Dont read previous notes at open the Notes Ui
-- Notes support special characters
+2.0.2:
+- new todo-list
 
 """
 
@@ -34,8 +32,8 @@ wallpaperPath = ""
 notes_text = ""
 start_on_startup = False 
 fahrenheit = False
-
-version = "2.0.1"
+tasks = []  # Para almacenar tareas en memoria
+version = "2.0.2"
 
 def obtain_current_dir():# define current path
     if getattr(sys, 'frozen', False):
@@ -44,7 +42,6 @@ def obtain_current_dir():# define current path
     else:
         # if file is .py script
         return os.path.dirname(os.path.abspath(__file__))
-currentPath = obtain_current_dir()
 
 # GeneralFunctions ########################################################################
 def openLink(link):# Open Links
@@ -100,43 +97,126 @@ def getCurrentVersion():# return current version for notify updates
 
 
 # Notes Functions #########################################################################
-def leer_notas_js():# read notes.json and update globals
-    global notes_text
-    try:
-        with open(wallpaperPath + "/files/info/" + "ToDoNotes.js", "r", encoding="utf-8") as file:
-            contenido = file.read()
-            # start and end array
-            start = contenido.find('[')
-            end = contenido.rfind(']')
-            
-            if start != -1 and end != -1:
-                # obtain text content
-                array_texto = contenido[start:end + 1]
-                try:
-                    # Usa json.loads to convert the content in list
-                    notes_text = json.loads(array_texto)
-                except json.JSONDecodeError:
-                    notes_text = []
-            else:
-                notes_text = []
-    except FileNotFoundError:
-        notes_text = []
 
-def actualizar_notas_js(array_notas):# save notes
-    # save array in js
-    with open(wallpaperPath + "/files/info/" + "ToDoNotes.js", "w", encoding="utf-8") as file:
-        # Convert the notes array to a text string in JavaScript array format
-        notas_js = json.dumps(array_notas, ensure_ascii=False)
+# load task from js
+def load_tasks_from_js():
+    global tasks
+    if os.path.exists(wallpaperPath + "/files/info/ToDoNotes.js"):
+        with open(wallpaperPath + "/files/info/ToDoNotes.js", 'r', encoding="utf-8") as file:
+            content = file.read()
+            # Extraer el contenido después de 'var todoNotes ='
+            start = content.find('[')
+            end = content.rfind('];')
+            if start != -1 and end != -1:
+                tasks = json.loads(content[start:end+1])
+
+# save task on js
+def save_tasks_to_js():
+    global tasks
+    notas_js = json.dumps(tasks, ensure_ascii=False)
+    with open(wallpaperPath + "/files/info/ToDoNotes.js", 'w', encoding="utf-8") as file:
         file.write(f'var todoNotes = {notas_js};\n')
 
-def guardar_notas():  # Gets the widget text and updates the JS file
-    global notes_text
-    notas_texto = text_area.get("1.0", "end").strip()
-    # Splits text into lines and converts them into an array of notes
-    notas_array = notas_texto.split('\n')
-    if notas_array:
-        notes_text = notas_texto
-        actualizar_notas_js(notas_array)
+# add new task
+def add_task(task_text):
+    if task_text:
+        tasks.append({'text': task_text, 'checked': False})
+        save_tasks_to_js()
+        display_tasks()
+
+# delete task
+def delete_task(index):
+    del tasks[index]
+    save_tasks_to_js()
+    display_tasks()
+
+# update checked status 
+def toggle_task(index):
+    tasks[index]['checked'] = not tasks[index]['checked']
+    save_tasks_to_js()
+
+# display task in main panel
+def display_tasks():
+    global tasks
+    icon_close = ctk.CTkImage(Image.open("./resources/close.png"), size=(30, 30))
+    button_style = {
+        "text_color": "white",
+        "fg_color": "transparent",
+        "hover_color": "#171a21",
+        "corner_radius": 5,
+        "compound": "left",
+        "anchor": "w",
+        "image": icon_close,
+        "width": 30,
+    }
+
+    for widget in task_list.winfo_children():
+        widget.destroy()
+
+    
+    for index, task in enumerate(tasks):
+        if isinstance(task, str):# raplace old-todo notes format for new value
+            task = ({
+                "text": task,
+                "checked": False
+            })
+            tasks[index] = task 
+            
+
+        # Verificar si task es un diccionario con la clave 'text'
+        if isinstance(task, dict) and 'text' in task:
+            task_frame = ctk.CTkFrame(master=task_list, fg_color="transparent")
+            task_frame.pack(pady=5, padx=10, fill="x", expand=True)
+            
+            # Checkbox para la tarea
+            def wrap_text(text, line_length):
+                words = text.split()
+                lines = []
+                current_line = ""
+
+                for word in words:
+                    if len(current_line + word) <= line_length:
+                        current_line += word + " "
+                    else:
+                        lines.append(current_line.strip())
+                        current_line = word + " "
+                
+                if current_line:
+                    lines.append(current_line.strip())
+
+                return "\n".join(lines)
+
+
+            checkboxStyle = {
+                "master": task_frame, 
+                "text": wrap_text(task['text'], 30),
+                "variable": ctk.StringVar(value=task['text']),
+                "onvalue": True, 
+                "offvalue": False, 
+                "width": 250,
+                "checkmark_color": "#565b5e",
+                "fg_color": "#565b5e",
+                "hover_color": "#565b5e",
+                "corner_radius": 5,
+                "text_color": "#ffffff",
+                "border_width": 1.5,
+                "border_color": "#565b5e"
+            }
+
+
+            # Dentro del código de agregar tareas
+            task_checkbox = ctk.CTkCheckBox(**checkboxStyle, command=lambda i=index: toggle_task(i))
+            task_checkbox.pack(side="left", padx=0)
+
+            if task['checked']:
+                task_checkbox.select()
+
+            # Botón de borrar
+            delete_button = ctk.CTkButton(master=task_frame, text="", command=lambda i=index: delete_task(i), **button_style)
+            delete_button.pack(side="right", padx=5) 
+        else:
+            print("invalid format: " + str(task))
+
 
 
 # Settings Functions ######################################################################
@@ -300,8 +380,6 @@ def mainPanel(mostrar): #ui menu
             p.pack_forget()
         panel.pack(fill='both', expand=True)
 
-    leer_notas_js() #updated textarea content
-
     root = ctk.CTk()
     root.title("WidgetsProject Extension")
     root.geometry("750x400")
@@ -341,7 +419,8 @@ def mainPanel(mostrar): #ui menu
         "corner_radius": 10,     
         "height": 40,               
         "anchor": "center",
-        "border_width": 2
+        "border_width": 2,
+        "border_color": "#565b5e"
     }
     mini_Panel_Style = {
         "fg_color": "#171a21",        
@@ -350,19 +429,20 @@ def mainPanel(mostrar): #ui menu
     text_input_Style = {
         "fg_color": "#12151a",        
         "corner_radius": 5,
-        "border_width": 1.5
-
+        "border_width": 1.5,
+        "border_color": "#565b5e"
     }
     button_style_new_Version = {
         "text_color": "white",
         "font": ctk.CTkFont(size=14),
-        "fg_color": "transparent",   # Color de fondo 
-        "hover_color": "#171a21",    # Color mouse hover
-        "corner_radius": 10,         # Border radius
-        "height": 50,                # button height
-        "compound": "left",          # Icon position
-        "anchor": "w",               # Text Align
-        "border_width": 2
+        "fg_color": "transparent",  
+        "hover_color": "#171a21",    
+        "corner_radius": 10,      
+        "height": 50,               
+        "compound": "left",       
+        "anchor": "w",               
+        "border_width": 2,
+        "border_color": "#565b5e"
     }
     
     # define icons
@@ -371,6 +451,7 @@ def mainPanel(mostrar): #ui menu
     icon_ajustes = ctk.CTkImage(Image.open("./resources/icon_ajustes.png"), size=(20, 20))
     icon_exit = ctk.CTkImage(Image.open("./resources/icon_exit.png"), size=(20, 20))
     icon_new = ctk.CTkImage(Image.open("./resources/new.png"), size=(20, 20))
+    
 
     # Crear los botones de la barra lateral con estilo personalizado 
     btn_inicio = ctk.CTkButton(sidebar, text="Home", image=icon_inicio, command=lambda: show_panel(panel_inicio), **button_style)
@@ -390,13 +471,14 @@ def mainPanel(mostrar): #ui menu
         btn_update.pack(fill='x', padx=10, pady=5, side='bottom')
 
 
-    # Home panel -----
+    # Home panel ------------------------------------------------------------------------------------------
     panel_inicio = ctk.CTkFrame(main_container, **mini_Panel_Style)
 
     # Banner en el panel de inicio
     banner_image = ctk.CTkImage(Image.open("./resources/banner.png"), size=(520, 150))
     banner_label = ctk.CTkLabel(panel_inicio, image=banner_image, text=f"Version: {version}", text_color="white", font=ctk.CTkFont(family="Courier", size=16))
     banner_label.pack(pady=(30, 20))
+
 
     # Crear un marco para los botones en el panel de inicio
     button_frame = ctk.CTkFrame(panel_inicio, **mini_Panel_Style)
@@ -412,25 +494,45 @@ def mainPanel(mostrar): #ui menu
     btn_github = ctk.CTkButton(button_frame, text="↗ GitHub Source", command=lambda: openLink("https://github.com/NicouHc/WidgetsProject-Extension"), **button_style_2)
     btn_github.pack(side="left", padx=10)
 
-    # Todo-NOTES  -----
+    # Todo-NOTES  ------------------------------------------------------------------------------------------
+    global task_list
+
     panel_notas = ctk.CTkFrame(main_container, **mini_Panel_Style)
     panel_notas_label = ctk.CTkLabel(panel_notas, text="ToDo-Notes", text_color="white",font=ctk.CTkFont(size=20))
     panel_notas_label.pack(pady=10)
+    
+    # Crear un Canvas para contener solo el frame de tareas (task_list)
+    canvas = ctk.CTkCanvas(panel_notas,  width=300, bg="#171a21", highlightthickness=0)# Limitar el alto para ver el efecto del scroll
+    canvas.pack(side="left", fill="x", expand=True, padx=10, pady=10)
 
-    global text_area
-    text_area = ctk.CTkTextbox(panel_notas, width=500, height=270, **text_input_Style)
-    text_area.pack(padx=10, pady=10)
+    # Agregar una Scrollbar lateral al canvas
+    scrollbar = ctk.CTkScrollbar(panel_notas, orientation="vertical", command=canvas.yview)
+    scrollbar.pack(side="left", fill="y")
 
-    boton_guardar = ctk.CTkButton(panel_notas, text="Save Notes", command=guardar_notas, **button_style_2)
-    boton_guardar.pack(pady=5)
+    # Configurar la scrollbar para el canvas
+    canvas.configure(yscrollcommand=scrollbar.set)
 
-    # Fill textarea with the content
-    if isinstance(notes_text, list):
-        text_area.insert("1.0", "\n".join(notes_text))
-    else:
-        text_area.insert("1.0", notes_text)
+    # Crear el frame de tareas y colocarlo dentro del canvas
+    task_list = ctk.CTkFrame(canvas, **text_input_Style)  # Este es tu frame con las tareas
+    task_list.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
-    # Settings Pannel  -----
+    # Agregar el frame task_list al canvas como una ventana
+    canvas.create_window((0, 0), window=task_list, anchor="nw")
+
+    # Textbox para agregar nuevas tareas
+    task_entry = ctk.CTkTextbox(panel_notas, height=60, **text_input_Style, text_color="#ffffff")
+    task_entry.pack(pady=10, padx=10)
+
+    # Botón para agregar tareas
+    add_button = ctk.CTkButton(panel_notas, text="Add Task", command=lambda: add_task(task_entry.get("1.0", "end-1c")), **button_style_2)
+    add_button.pack(pady=10)
+
+    
+    load_tasks_from_js()# load previous taks
+    display_tasks()# show tasks
+    
+
+    # Settings Pannel  ------------------------------------------------------------------------------------------
     panel_ajustes = ctk.CTkFrame(main_container, **mini_Panel_Style)
 
     titleSettings = ctk.CTkLabel(panel_ajustes, text="Settings", text_color="white",font=ctk.CTkFont(size=20))
@@ -463,7 +565,7 @@ def mainPanel(mostrar): #ui menu
     entry_longitude.grid(row=5, column=1, padx=10, pady=5)
 
     var_fahrenheit = ctk.BooleanVar()
-    ctk.CTkCheckBox(panel_ajustes, text="Degrees in Fahrenheit", variable=var_fahrenheit, text_color="white").grid(row=6, column=0, columnspan=2, pady=10)
+    ctk.CTkCheckBox(panel_ajustes, text="Degrees in Fahrenheit", variable=var_fahrenheit, text_color="white", border_color="#565b5e").grid(row=6, column=0, columnspan=2, pady=10)
     
 
     divider = ctk.CTkFrame(panel_ajustes, height=2, fg_color="grey")
@@ -474,7 +576,7 @@ def mainPanel(mostrar): #ui menu
     divider.grid(row=7, column=2, sticky="ew", padx=0, pady=10)
 
     var_startup = ctk.BooleanVar()
-    ctk.CTkCheckBox(panel_ajustes, text="Start on Windows Startup", variable=var_startup, text_color="white").grid(row=8, column=0, columnspan=2, pady=10)
+    ctk.CTkCheckBox(panel_ajustes, text="Start on Windows Startup", variable=var_startup, text_color="white", border_color="#565b5e").grid(row=8, column=0, columnspan=2, pady=10)
     
     ctk.CTkButton(panel_ajustes, text="Save", command=guardar_configuracion, **button_style_2).grid(row=9, column=0, columnspan=2, pady=10)
     # --------------------
@@ -522,7 +624,6 @@ def start_threads():# start cpu/ram/weather update threads
 
 def menu():# generate try icon 
     os.system("title Widgets Project && cls")
-
     # tryicon
     menu = (
         item('Info',  lambda:mainPanel("panel_inicio")),
@@ -547,6 +648,8 @@ def menu():# generate try icon
 if __name__ == "__main__":
     try:
         hide_console()
+        currentPath = obtain_current_dir()
+
         preLoad()  # load settings
         menu()  # display tryicon menu
     except Exception as e: 
