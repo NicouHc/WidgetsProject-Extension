@@ -17,31 +17,33 @@ import sys
 """
 Latest Changelog (22/09/2024):
 
-2.0.2:
+[ 2.0.2 ]==========================================
 - new todo-list
+
+[ 2.0.3 ]==========================================
+- fixed todo-list Style
+- small changes on buttons hovers colors
+- added debug button to change console visibility and check possible errors
+- added open Folder button to open Wallpaper directory
+- new checkbox style for settings
+- avoid exiting the Settings menu when defining settings for the first time to prevent errors.
 
 """
 
 # -----------------------
 # define var
 running = True
-global latitude, longitude, wallpaperPath, notes_text, start_on_startup, fahrenheit
+global latitude, longitude, wallpaperPath, start_on_startup, fahrenheit
 latitude = ""
 longitude = ""
 wallpaperPath = ""
-notes_text = ""
 start_on_startup = False 
 fahrenheit = False
-tasks = []  # Para almacenar tareas en memoria
-version = "2.0.2"
+tasks = [] 
+version = "2.0.3"
 
-def obtain_current_dir():# define current path
-    if getattr(sys, 'frozen', False):
-        # if the file is .exe
-        return os.path.dirname(sys.argv[0])
-    else:
-        # if file is .py script
-        return os.path.dirname(os.path.abspath(__file__))
+global consoleVisibility
+consoleVisibility = False
 
 # GeneralFunctions ########################################################################
 def openLink(link):# Open Links
@@ -55,21 +57,26 @@ class style():# class styles for console message with colors
     OKBLUE = '\033[94m'
     DIV = '\033[100m \033[90m'
 
-def hide_console():# show hide console functions
-    #Hidde window console
-    
-    hwnd = ctypes.windll.kernel32.GetConsoleWindow()
-    if hwnd != 0:
-        ctypes.windll.user32.ShowWindow(hwnd, 0)  # SW_HIDE = 0
-def show_console():
-    #Show Console
-   
+def console_visibility(var): # change consolve visibility
+    global consoleVisibility
+
+    if(var == 3):# get oposite
+        if(consoleVisibility) == 1: var = 2
+        else: var = 1
+
+    consoleVisibility = var
+
+    if(var == 1):
+        show = 5#Show Console
+    else:
+        show = 0#Hide Console
+
     hwnd = ctypes.windll.kernel32.GetConsoleWindow() 
     if hwnd != 0:
-        ctypes.windll.user32.ShowWindow(hwnd, 5)  # SW_SHOW = 5
+        ctypes.windll.user32.ShowWindow(hwnd, show)  # SW_SHOW = 5
 
 def print_Error(e):# show error with format
-    show_console()
+    console_visibility(1)
     os.system("title Widgets Project && cls")
     print("")
     print(style.RED + " [i] An error occurred " + style.ENDC);
@@ -94,6 +101,14 @@ def getCurrentVersion():# return current version for notify updates
     except:
         pass
     return(content)
+
+def obtain_current_dir():# define current path
+    if getattr(sys, 'frozen', False):
+        # if the file is .exe
+        return os.path.dirname(sys.argv[0])
+    else:
+        # if file is .py script
+        return os.path.dirname(os.path.abspath(__file__))
 
 
 # Notes Functions #########################################################################
@@ -139,61 +154,68 @@ def toggle_task(index):
 def display_tasks():
     global tasks
     icon_close = ctk.CTkImage(Image.open("./resources/close.png"), size=(30, 30))
+    
     button_style = {
         "text_color": "white",
         "fg_color": "transparent",
         "hover_color": "#171a21",
-        "corner_radius": 5,
+        "corner_radius": 0,
         "compound": "left",
         "anchor": "w",
         "image": icon_close,
         "width": 30,
     }
+    frame_Style = {
+        "fg_color": "#12151a",        
+        "corner_radius": 5,
+        "border_width": 1.5,
+        "border_color": "#565b5e",
+        "width": 200,  # Ancho del Frame
+        "height": 100,  # Altura del Frame
+    }
+    
 
     for widget in task_list.winfo_children():
         widget.destroy()
 
     
     for index, task in enumerate(tasks):
+        
         if isinstance(task, str):# raplace old-todo notes format for new value
             task = ({
                 "text": task,
                 "checked": False
             })
             tasks[index] = task 
+        
+        # Checkbox para la tarea
+        def wrap_text(text, line_length):
+            words = text.split()
+            lines = []
+            current_line = ""
+            for word in words:
+                if len(current_line + word) <= line_length:
+                    current_line += word + " "
+                else:
+                    lines.append(current_line.strip())
+                    current_line = word + " "
             
+            if current_line:
+                lines.append(current_line.strip())
+            return "\n".join(lines)
 
         # Verificar si task es un diccionario con la clave 'text'
         if isinstance(task, dict) and 'text' in task:
-            task_frame = ctk.CTkFrame(master=task_list, fg_color="transparent")
+            task_frame = ctk.CTkFrame(master=task_list, **frame_Style)
             task_frame.pack(pady=5, padx=10, fill="x", expand=True)
             
-            # Checkbox para la tarea
-            def wrap_text(text, line_length):
-                words = text.split()
-                lines = []
-                current_line = ""
-
-                for word in words:
-                    if len(current_line + word) <= line_length:
-                        current_line += word + " "
-                    else:
-                        lines.append(current_line.strip())
-                        current_line = word + " "
-                
-                if current_line:
-                    lines.append(current_line.strip())
-
-                return "\n".join(lines)
-
-
             checkboxStyle = {
                 "master": task_frame, 
                 "text": wrap_text(task['text'], 30),
                 "variable": ctk.StringVar(value=task['text']),
                 "onvalue": True, 
                 "offvalue": False, 
-                "width": 250,
+                "width": 300,
                 "checkmark_color": "#565b5e",
                 "fg_color": "#565b5e",
                 "hover_color": "#565b5e",
@@ -203,22 +225,20 @@ def display_tasks():
                 "border_color": "#565b5e"
             }
 
-
             # Dentro del código de agregar tareas
             task_checkbox = ctk.CTkCheckBox(**checkboxStyle, command=lambda i=index: toggle_task(i))
-            task_checkbox.pack(side="left", padx=0)
+            task_checkbox.pack(side="left", padx=15)
 
             if task['checked']:
                 task_checkbox.select()
 
             # Botón de borrar
             delete_button = ctk.CTkButton(master=task_frame, text="", command=lambda i=index: delete_task(i), **button_style)
-            delete_button.pack(side="right", padx=5) 
+            delete_button.pack(side="right", padx=2, pady=3) 
         else:
             print("invalid format: " + str(task))
 
-
-
+  
 # Settings Functions ######################################################################
 def load_settings(file_path):#  load json settings
     if os.path.exists(file_path):
@@ -242,7 +262,7 @@ def save_settings(file_path, settings):# save json
 def set_startup(enable):# define start program on pc startup
     script_path = currentPath  # Obtain .exe path
     
-    key = r"Software\Microsoft\Windows\CurrentVersion\Run"
+    key = r"Software\\Microsoft\\Windows\\CurrentVersion\\Run"
     value = "WidgetsProjectExtension"  # define registry name
 
     try:
@@ -346,7 +366,7 @@ def mainPanel(mostrar): #ui menu
             root.destroy()
         elif (os.path.exists(wallpaperPath + "/a.html") == False and  os.path.exists(wallpaperPath + "/files") == True):
             # preset error
-            show_console()
+            console_visibility(1)
             os.system("title Widgets Project && cls")
             print("")
             print(style.RED + " [i] Error - Invalid Path. " + style.ENDC);
@@ -362,7 +382,7 @@ def mainPanel(mostrar): #ui menu
             os._exit(0)
         else:
             # invalid path
-            show_console()
+            console_visibility(1)
             os.system("title Widgets Project && cls")
             print("")
             print(style.RED + " [i] Error - Invalid Path. " + style.ENDC);
@@ -376,10 +396,21 @@ def mainPanel(mostrar): #ui menu
             os._exit(0)
    
     def show_panel(panel): #function show specific subpanel
+        
+        if(wallpaperPath == ""): # Avoid exiting the setup menu when defining settings for the first time
+            panel=panel_ajustes
+
         for p in [panel_inicio, panel_notas, panel_ajustes]:
             p.pack_forget()
         panel.pack(fill='both', expand=True)
-
+    
+    
+        """
+        os.remove(wallpaperPath + '/files/info/' + 'weather-data.js')
+        os.remove(wallpaperPath + '/files/info/' + 'pc-info.js')
+        os.remove(wallpaperPath + '/files/info/' + 'ToDoNotes.js')
+        """
+        
     root = ctk.CTk()
     root.title("WidgetsProject Extension")
     root.geometry("750x400")
@@ -415,7 +446,7 @@ def mainPanel(mostrar): #ui menu
         "text_color": "white",
         "font": ctk.CTkFont( size=14),
         "fg_color": "#12151a",        
-        "hover_color": "#763636",
+        "hover_color": "#22242b",
         "corner_radius": 10,     
         "height": 40,               
         "anchor": "center",
@@ -444,6 +475,15 @@ def mainPanel(mostrar): #ui menu
         "border_width": 2,
         "border_color": "#565b5e"
     }
+    checkboxStyle = {
+        "checkmark_color": "#565b5e",
+        "fg_color": "#565b5e",
+        "hover_color": "#565b5e",
+        "corner_radius": 5,
+        "text_color": "#ffffff",
+        "border_width": 1.5,
+        "border_color": "#565b5e"
+    }
     
     # define icons
     icon_inicio = ctk.CTkImage(Image.open("./resources/icon_inicio.png"), size=(20, 20))
@@ -452,7 +492,6 @@ def mainPanel(mostrar): #ui menu
     icon_exit = ctk.CTkImage(Image.open("./resources/icon_exit.png"), size=(20, 20))
     icon_new = ctk.CTkImage(Image.open("./resources/new.png"), size=(20, 20))
     
-
     # Crear los botones de la barra lateral con estilo personalizado 
     btn_inicio = ctk.CTkButton(sidebar, text="Home", image=icon_inicio, command=lambda: show_panel(panel_inicio), **button_style)
     btn_inicio.pack(fill='x', padx=10, pady=5)
@@ -467,18 +506,17 @@ def mainPanel(mostrar): #ui menu
     btn_exit.pack(fill='x', padx=10, pady=5, side='bottom')
 
     if(version != getCurrentVersion()): # if version is diferent than latest version -> display button
-        btn_update = ctk.CTkButton(sidebar, text="New Version Available", image=icon_new, command=lambda: openLink("https://github.com/NicouHc/WidgetsProject-Extension"), **button_style_new_Version)
+        btn_update = ctk.CTkButton(sidebar, text="New Version", image=icon_new, command=lambda: openLink("https://github.com/NicouHc/WidgetsProject-Extension"), **button_style_new_Version)
         btn_update.pack(fill='x', padx=10, pady=5, side='bottom')
 
 
     # Home panel ------------------------------------------------------------------------------------------
     panel_inicio = ctk.CTkFrame(main_container, **mini_Panel_Style)
 
-    # Banner en el panel de inicio
+    # Banner
     banner_image = ctk.CTkImage(Image.open("./resources/banner.png"), size=(520, 150))
     banner_label = ctk.CTkLabel(panel_inicio, image=banner_image, text=f"Version: {version}", text_color="white", font=ctk.CTkFont(family="Courier", size=16))
     banner_label.pack(pady=(30, 20))
-
 
     # Crear un marco para los botones en el panel de inicio
     button_frame = ctk.CTkFrame(panel_inicio, **mini_Panel_Style)
@@ -494,39 +532,40 @@ def mainPanel(mostrar): #ui menu
     btn_github = ctk.CTkButton(button_frame, text="↗ GitHub Source", command=lambda: openLink("https://github.com/NicouHc/WidgetsProject-Extension"), **button_style_2)
     btn_github.pack(side="left", padx=10)
 
+
     # Todo-NOTES  ------------------------------------------------------------------------------------------
     global task_list
 
     panel_notas = ctk.CTkFrame(main_container, **mini_Panel_Style)
-    panel_notas_label = ctk.CTkLabel(panel_notas, text="ToDo-Notes", text_color="white",font=ctk.CTkFont(size=20))
-    panel_notas_label.pack(pady=10)
     
-    # Crear un Canvas para contener solo el frame de tareas (task_list)
-    canvas = ctk.CTkCanvas(panel_notas,  width=300, bg="#171a21", highlightthickness=0)# Limitar el alto para ver el efecto del scroll
+    # Crear un Canvas para contener solo el frame de tareas (task_list) 171a21
+    canvas = ctk.CTkCanvas(panel_notas, width=300, height=290, bg="#171a21", highlightthickness=0)# Limitar el alto para ver el efecto del scroll
     canvas.pack(side="left", fill="x", expand=True, padx=10, pady=10)
 
     # Agregar una Scrollbar lateral al canvas
     scrollbar = ctk.CTkScrollbar(panel_notas, orientation="vertical", command=canvas.yview)
-    scrollbar.pack(side="left", fill="y")
+    scrollbar.pack(side="left", fill="y", pady=30)
 
     # Configurar la scrollbar para el canvas
     canvas.configure(yscrollcommand=scrollbar.set)
 
-    # Crear el frame de tareas y colocarlo dentro del canvas
-    task_list = ctk.CTkFrame(canvas, **text_input_Style)  # Este es tu frame con las tareas
+    #Task frame
+    task_list = ctk.CTkFrame(canvas,  fg_color="transparent")  
     task_list.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
     # Agregar el frame task_list al canvas como una ventana
     canvas.create_window((0, 0), window=task_list, anchor="nw")
 
+    panel_notas_label = ctk.CTkLabel(panel_notas, text="ToDo-Notes", text_color="white",font=ctk.CTkFont(size=20))
+    panel_notas_label.pack(pady=10)
+
     # Textbox para agregar nuevas tareas
-    task_entry = ctk.CTkTextbox(panel_notas, height=60, **text_input_Style, text_color="#ffffff")
+    task_entry = ctk.CTkEntry(panel_notas, height=60, **text_input_Style, text_color="#ffffff")
     task_entry.pack(pady=10, padx=10)
 
     # Botón para agregar tareas
-    add_button = ctk.CTkButton(panel_notas, text="Add Task", command=lambda: add_task(task_entry.get("1.0", "end-1c")), **button_style_2)
+    add_button = ctk.CTkButton(panel_notas, text="+ Add Task", command=lambda: add_task(task_entry.get()), **button_style_2)
     add_button.pack(pady=10)
-
     
     load_tasks_from_js()# load previous taks
     display_tasks()# show tasks
@@ -565,9 +604,8 @@ def mainPanel(mostrar): #ui menu
     entry_longitude.grid(row=5, column=1, padx=10, pady=5)
 
     var_fahrenheit = ctk.BooleanVar()
-    ctk.CTkCheckBox(panel_ajustes, text="Degrees in Fahrenheit", variable=var_fahrenheit, text_color="white", border_color="#565b5e").grid(row=6, column=0, columnspan=2, pady=10)
+    ctk.CTkCheckBox(panel_ajustes, text="Degrees in Fahrenheit", variable=var_fahrenheit, **checkboxStyle).grid(row=6, column=0, columnspan=2, pady=10)
     
-
     divider = ctk.CTkFrame(panel_ajustes, height=2, fg_color="grey")
     divider.grid(row=7, column=0, sticky="ew", padx=0, pady=10)
     divider = ctk.CTkFrame(panel_ajustes, height=2, fg_color="grey")
@@ -576,9 +614,16 @@ def mainPanel(mostrar): #ui menu
     divider.grid(row=7, column=2, sticky="ew", padx=0, pady=10)
 
     var_startup = ctk.BooleanVar()
-    ctk.CTkCheckBox(panel_ajustes, text="Start on Windows Startup", variable=var_startup, text_color="white", border_color="#565b5e").grid(row=8, column=0, columnspan=2, pady=10)
+    ctk.CTkCheckBox(panel_ajustes, text="Start on PC Startup", variable=var_startup, **checkboxStyle).grid(row=8, column=0, columnspan=2, pady=10)
     
-    ctk.CTkButton(panel_ajustes, text="Save", command=guardar_configuracion, **button_style_2).grid(row=9, column=0, columnspan=2, pady=10)
+    button_frame = ctk.CTkFrame(panel_ajustes, **mini_Panel_Style)
+    button_frame.grid(row=9, column=0, columnspan=2, pady=10, padx=0)
+    ctk.CTkButton(button_frame, text="▸ Save Settings", command=guardar_configuracion, **button_style_2).grid(row=9, column=0, pady=10, padx=15)
+    if(wallpaperPath):
+        ctk.CTkButton(button_frame, text="▸ Debug Console", command=lambda: console_visibility(3), **button_style_2).grid(row=9, column=1, pady=10, padx=15)
+        ctk.CTkButton(button_frame, text="▸ Wallpaper Folder", command=lambda: openLink(f'{wallpaperPath}\\files\\info'), **button_style_2).grid(row=9, column=2, padx=15, pady=10)
+
+
     # --------------------
     entry_directory.insert(0, wallpaperPath)
     entry_latitude.insert(0, latitude)
@@ -647,7 +692,7 @@ def menu():# generate try icon
 
 if __name__ == "__main__":
     try:
-        hide_console()
+        console_visibility(2)
         currentPath = obtain_current_dir()
 
         preLoad()  # load settings
