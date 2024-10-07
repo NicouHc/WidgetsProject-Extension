@@ -15,7 +15,7 @@ import winreg
 import sys
 
 """
-Latest Changelog (22/09/2024):
+Latest Changelog (06/10/2024):
 
 [ 2.0.2 ]==========================================
 - new todo-list
@@ -27,6 +27,11 @@ Latest Changelog (22/09/2024):
 - added open Folder button to open Wallpaper directory
 - new checkbox style for settings
 - avoid exiting the Settings menu when defining settings for the first time to prevent errors.
+
+[ 2.0.4 ]==========================================
+- fixed possible error at Open wallpaper directory
+- updated wp-extension tutorial video on readme
+- added tutorial button at define settings for first time
 
 """
 
@@ -40,16 +45,18 @@ wallpaperPath = ""
 start_on_startup = False 
 fahrenheit = False
 tasks = [] 
-version = "2.0.3"
+version = "2.0.4"
 
 global consoleVisibility
 consoleVisibility = False
 
 # GeneralFunctions ########################################################################
 def openLink(link):# Open Links
-    if link:
+    if "https://" in link: #open links
         os.system(f'start {link}')
-
+    else:#open directory
+        os.startfile(os.path.realpath(link))
+        
 class style():# class styles for console message with colors 
     RED = '\033[31m'
     YELLOW = '\033[33m'
@@ -619,10 +626,13 @@ def mainPanel(mostrar): #ui menu
     button_frame = ctk.CTkFrame(panel_ajustes, **mini_Panel_Style)
     button_frame.grid(row=9, column=0, columnspan=2, pady=10, padx=0)
     ctk.CTkButton(button_frame, text="▸ Save Settings", command=guardar_configuracion, **button_style_2).grid(row=9, column=0, pady=10, padx=15)
+    
     if(wallpaperPath):
         ctk.CTkButton(button_frame, text="▸ Debug Console", command=lambda: console_visibility(3), **button_style_2).grid(row=9, column=1, pady=10, padx=15)
         ctk.CTkButton(button_frame, text="▸ Wallpaper Folder", command=lambda: openLink(f'{wallpaperPath}\\files\\info'), **button_style_2).grid(row=9, column=2, padx=15, pady=10)
-
+    else:
+        ctk.CTkButton(button_frame, text="▸ Tutorial", command=lambda: openLink(f'https://www.youtube.com/watch?v=1s-l17dJ2BE'), **button_style_2).grid(row=9, column=3, pady=10, padx=15)
+    
 
     # --------------------
     entry_directory.insert(0, wallpaperPath)
