@@ -7,17 +7,15 @@
 ## Features
 
 - **CPU and RAM Monitoring**: Displays real-time CPU and RAM usage.
-- **Weather Updates**: Get updated weather data using the [Open Meteo API](https://open-meteo.com).
 - **Task Notes**: Manage your notes directly from the Extension.
-- **Flexible Configuration**: Customize the project settings through a user-friendly graphical interface.
+- **Easy Configuration**: Customize the project settings through a user-friendly graphical interface.
 
 ## How It Works
 
-- **On the Script Side**: The script will retrieve the relevant information from the PC and generate a JavaScript file, such as `pc-info.js`. This file will contain a variable called `pc_info`, which will store two values: CPU usage and memory usage. The variable will be structured like this: `var pc_info = [23.4, 31.5];`, where `23.4` represents the percentage of CPU usage, and `31.5` represents the percentage of memory usage.
+- **On the Script Side**: It retrieves system information using the `psutil` library, such as CPU usage, RAM usage, and battery charge. It also manages a to-do list and can display custom notes or other relevant data that the user wants to track. Using `Flask` as a local server, the script sends this information via localhost, allowing the wallpaper to fetch and display it in real-time.
 
-- **On the Wallpaper Side**: The wallpaper will refresh the content of the JavaScript file at regular intervals, allowing it to receive updates to the variable's values. This ensures that the most current CPU and memory usage information is displayed on the screen in real-time.
-
-- [How to Use Video](https://youtu.be/1s-l17dJ2BE)
+- **On the Wallpaper Side**:  The wallpaper uses javaScripts `fetch` to periodically request the system information from the LocalHost. This enables the wallpaper to dynamically update and display CPU, memory, battery usage, and any user-defined notes or to-do items, providing a real-time system monitor right on the desktop.
 
 ## More
-if you have any question you can join our [Discord](https://discord.com/invite/63EUyQBZPm) or leave a comment on the wallpaper ❤️
+- [Video Review v2.0.4 (outdated)](https://youtu.be/1s-l17dJ2BE)
+- if you have any question you can join our [Discord](https://discord.com/invite/63EUyQBZPm) or leave a comment on the wallpaper ❤️

@@ -14,6 +14,9 @@ from PIL import Image
 import winreg
 import sys
 
+from flask import Flask
+from flask_cors import CORS
+
 """
 Latest Changelog (06/10/2024):
 
@@ -33,19 +36,24 @@ Latest Changelog (06/10/2024):
 - updated wp-extension tutorial video on readme
 - added tutorial button at define settings for first time
 
+[ 2.0.5 ]==========================================
+- app run over flask local server so now it dont require add wallpaper folder for work
+- todo-notes saved on settings.json
+- weather is now integrated inside the wallpaper
+- added battery display in usage
+
 """
 
 # -----------------------
 # define var
 running = True
-global latitude, longitude, wallpaperPath, start_on_startup, fahrenheit
-latitude = ""
-longitude = ""
-wallpaperPath = ""
+global start_on_startup, settings, PcUsage
+
+settings = ""
 start_on_startup = False 
-fahrenheit = False
 tasks = [] 
-version = "2.0.4"
+version = "2.0.5"
+PcUsage = [0, 0]
 
 global consoleVisibility
 consoleVisibility = False
@@ -119,46 +127,22 @@ def obtain_current_dir():# define current path
 
 
 # Notes Functions #########################################################################
-
-# load task from js
-def load_tasks_from_js():
-    global tasks
-    if os.path.exists(wallpaperPath + "/files/info/ToDoNotes.js"):
-        with open(wallpaperPath + "/files/info/ToDoNotes.js", 'r', encoding="utf-8") as file:
-            content = file.read()
-            # Extraer el contenido después de 'var todoNotes ='
-            start = content.find('[')
-            end = content.rfind('];')
-            if start != -1 and end != -1:
-                tasks = json.loads(content[start:end+1])
-
-# save task on js
-def save_tasks_to_js():
-    global tasks
-    notas_js = json.dumps(tasks, ensure_ascii=False)
-    with open(wallpaperPath + "/files/info/ToDoNotes.js", 'w', encoding="utf-8") as file:
-        file.write(f'var todoNotes = {notas_js};\n')
-
-# add new task
-def add_task(task_text):
+def add_task(task_text):# add new task
     if task_text:
         tasks.append({'text': task_text, 'checked': False})
-        save_tasks_to_js()
+        save_settings(currentPath + '/settings.json', settings)
         display_tasks()
 
-# delete task
-def delete_task(index):
+def delete_task(index):# delete task
     del tasks[index]
-    save_tasks_to_js()
+    save_settings(currentPath + '/settings.json', settings)
     display_tasks()
 
-# update checked status 
-def toggle_task(index):
+def toggle_task(index):# update checked status
     tasks[index]['checked'] = not tasks[index]['checked']
-    save_tasks_to_js()
+    save_settings(currentPath + '/settings.json', settings)
 
-# display task in main panel
-def display_tasks():
+def display_tasks():# display task in main panel
     global tasks
     icon_close = ctk.CTkImage(Image.open("./resources/close.png"), size=(30, 30))
     
@@ -250,14 +234,11 @@ def display_tasks():
 def load_settings(file_path):#  load json settings
     if os.path.exists(file_path):
         with open(file_path, 'r') as file:
-            settings = json.load(file)
+            global start_on_startup, tasks, settings
 
-            global wallpaperPath, latitude, longitude, start_on_startup, fahrenheit
-            wallpaperPath = settings['directory']
-            latitude = settings['latitud']
-            longitude = settings['longitud']
+            settings = json.load(file)
             start_on_startup = settings.get('start_on_startup', False)
-            fahrenheit =  settings.get('fahrenheit', False)
+            tasks = settings.get('todo_list', [])
             return settings
     else:
         return None
@@ -301,116 +282,48 @@ def obtener_info(intervalo=1):# computer usage
     global running
     while running:
 
-        global uso_cpu, uso_ram
+        global uso_cpu, uso_ram, battery
         uso_cpu = psutil.cpu_percent(interval=intervalo)
         uso_ram = psutil.virtual_memory().percent
+        battery = psutil.sensors_battery()
+        
+        if(battery):
+            battery = battery.percent
+        else:
+            battery = -1
 
-        # Generate the content on js
-        js_content = f"var pc_info = [{uso_cpu }, {uso_ram}];\n"
-
-        os.makedirs(os.path.dirname(wallpaperPath + '/files/info/'+ 'pc-info.js'), exist_ok=True)
-
-        # write values on the file pc-info.js
-        with open(wallpaperPath + '/files/info/' + 'pc-info.js', 'w') as file:
-            file.write(js_content)
-
+        # Generate array
+        global PcUsage
+        PcUsage = f"[{uso_cpu }, {uso_ram}, {battery}]"
         time.sleep(1)  # zzz
-
-def weather():# weather
-    global latitude, longitude,fahrenheit
-
-    if(fahrenheit):
-        vfahrenheit = "temperature_unit=fahrenheit&"
-    else:
-        vfahrenheit = ""
-
-    api_url = f"https://api.open-meteo.com/v1/forecast?{vfahrenheit}latitude={latitude}&longitude={longitude}&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,rain,snowfall,wind_speed_10m&daily=&past_days=1"
-    contador = 0
-
-    global running
-    while running:
-        try:
-            response = requests.get(api_url)
-            response.raise_for_status()  # display error if fail
-            weather_data = response.json()
-            
-            # convert JSON to js format
-            js_content = f"var weather_data = [{json.dumps(weather_data, indent=4)}];\n"
-            
-            # save js as file
-            with open(wallpaperPath + '/files/info/' + 'weather-data.js', 'w') as file:
-                file.write(js_content)
-            
-            time.sleep(18000)  # refresh every 5hs
-        except requests.RequestException as e:
-            time.sleep(10)
-            contador += 1
-            if(contador == 5):
-                print("(i) Weather Update Stopped")
-                break
 
 
 # MAIN WINDOW #############################################################################
 def mainPanel(mostrar): #ui menu
     def guardar_configuracion():# function save text input in to json
-        global wallpaperPath, latitude, longitude, start_on_startup, fahrenheit
-        wallpaperPath = entry_directory.get()
-        latitude = entry_latitude.get()
-        longitude = entry_longitude.get()
+        global start_on_startup, settings
         start_on_startup = var_startup.get()
-        fahrenheit = var_fahrenheit.get()
-
-        if os.path.exists(wallpaperPath + "/files/info"):
-            settings = {
-                "directory": wallpaperPath,
-                "longitud": longitude,
-                "latitud": latitude,
-                "start_on_startup": start_on_startup,
-                "fahrenheit": fahrenheit
-            }
-            save_settings(currentPath + '/settings.json', settings) # save settings json
-            set_startup(start_on_startup)  # config startup
-            root.destroy()
-        elif (os.path.exists(wallpaperPath + "/a.html") == False and  os.path.exists(wallpaperPath + "/files") == True):
-            # preset error
-            console_visibility(1)
-            os.system("title Widgets Project && cls")
-            print("")
-            print(style.RED + " [i] Error - Invalid Path. " + style.ENDC);
-            print("")
-            print(style.ENDC + " This is a " + style.RED + "Preset Folder"+ style.ENDC + ", find "+ style.OKBLUE +" WidgetsProject"+ style.ENDC +" folder. " + style.ENDC)
-            print("")
-            print(" Simple Tutorial: "+ style.ENDC)
-            print(" 1- Open " + style.OKBLUE + "Wallpaper Engine."  + style.ENDC)
-            print(" 2- Find the wallpaper called " + style.OKBLUE + "Widgets Project." + style.ENDC)
-            print(" 3- Second Click over it and select the option " + style.YELLOW + "'Open in Explorer'. " + style.ENDC)
-            print("")
-            os.system("pause")
-            os._exit(0)
-        else:
-            # invalid path
-            console_visibility(1)
-            os.system("title Widgets Project && cls")
-            print("")
-            print(style.RED + " [i] Error - Invalid Path. " + style.ENDC);
-            print("")
-            print(" Simple Tutorial: "+ style.ENDC)
-            print(" 1- Open " + style.OKBLUE + "Wallpaper Engine."  + style.ENDC)
-            print(" 2- Find the wallpaper called " + style.OKBLUE + "Widgets Project." + style.ENDC)
-            print(" 3- Second Click over it and select the option " + style.YELLOW + "'Open in Explorer'. " + style.ENDC)
-            print("")
-            os.system("pause")
-            os._exit(0)
-   
-    def show_panel(panel): #function show specific subpanel
         
-        if(wallpaperPath == ""): # Avoid exiting the setup menu when defining settings for the first time
-            panel=panel_ajustes
-
+        settings = {
+            "start_on_startup": start_on_startup,
+            "todo_list": tasks
+        }
+        save_settings(currentPath + '/settings.json', settings) # save settings json
+        set_startup(start_on_startup)  # config startup
+        root.destroy()
+        
+    def show_panel(panel): #function show specific subpanel
+        global settings
+        if(settings == ""): # Avoid exiting the setup menu when defining settings for the first time
+            settings = {
+                "start_on_startup": start_on_startup,
+                "todo_list": tasks
+            }
+            save_settings(currentPath + '/settings.json', settings)
+            
         for p in [panel_inicio, panel_notas, panel_ajustes]:
             p.pack_forget()
         panel.pack(fill='both', expand=True)
-    
     
         """
         os.remove(wallpaperPath + '/files/info/' + 'weather-data.js')
@@ -574,7 +487,6 @@ def mainPanel(mostrar): #ui menu
     add_button = ctk.CTkButton(panel_notas, text="+ Add Task", command=lambda: add_task(task_entry.get()), **button_style_2)
     add_button.pack(pady=10)
     
-    load_tasks_from_js()# load previous taks
     display_tasks()# show tasks
     
 
@@ -583,17 +495,6 @@ def mainPanel(mostrar): #ui menu
 
     titleSettings = ctk.CTkLabel(panel_ajustes, text="Settings", text_color="white",font=ctk.CTkFont(size=20))
     titleSettings.grid(row=0, column=0, pady=10, padx=10)
-
-    divider = ctk.CTkFrame(panel_ajustes, height=2, fg_color="grey")
-    divider.grid(row=1, column=0, sticky="ew", padx=0, pady=10)
-    divider = ctk.CTkFrame(panel_ajustes, height=2, fg_color="grey")
-    divider.grid(row=1, column=1, sticky="ew", padx=0, pady=10)
-    divider = ctk.CTkFrame(panel_ajustes, height=2, fg_color="grey")
-    divider.grid(row=1, column=2, sticky="ew", padx=0, pady=10)
-
-    ctk.CTkLabel(panel_ajustes, text="Wallpaper Directory:", text_color="white").grid(row=2, column=0, padx=10, pady=5)
-    entry_directory = ctk.CTkEntry(panel_ajustes, width=250, **text_input_Style) 
-    entry_directory.grid(row=2, column=1, padx=10, pady=5)
     
     divider = ctk.CTkFrame(panel_ajustes, height=2, fg_color="grey")
     divider.grid(row=3, column=0, sticky="ew", padx=0, pady=10)
@@ -602,24 +503,6 @@ def mainPanel(mostrar): #ui menu
     divider = ctk.CTkFrame(panel_ajustes, height=2, fg_color="grey")
     divider.grid(row=3, column=2, sticky="ew", padx=0, pady=10)
 
-    ctk.CTkLabel(panel_ajustes, text="Weather Latitude:", text_color="white").grid(row=4, column=0, padx=10, pady=5)
-    entry_latitude = ctk.CTkEntry(panel_ajustes, width=250, **text_input_Style)  
-    entry_latitude.grid(row=4, column=1, padx=10, pady=5)
-
-    ctk.CTkLabel(panel_ajustes, text="Weather Longitude:", text_color="white").grid(row=5, column=0, padx=10, pady=5)
-    entry_longitude = ctk.CTkEntry(panel_ajustes, width=250, **text_input_Style)
-    entry_longitude.grid(row=5, column=1, padx=10, pady=5)
-
-    var_fahrenheit = ctk.BooleanVar()
-    ctk.CTkCheckBox(panel_ajustes, text="Degrees in Fahrenheit", variable=var_fahrenheit, **checkboxStyle).grid(row=6, column=0, columnspan=2, pady=10)
-    
-    divider = ctk.CTkFrame(panel_ajustes, height=2, fg_color="grey")
-    divider.grid(row=7, column=0, sticky="ew", padx=0, pady=10)
-    divider = ctk.CTkFrame(panel_ajustes, height=2, fg_color="grey")
-    divider.grid(row=7, column=1, sticky="ew", padx=0, pady=10)
-    divider = ctk.CTkFrame(panel_ajustes, height=2, fg_color="grey")
-    divider.grid(row=7, column=2, sticky="ew", padx=0, pady=10)
-
     var_startup = ctk.BooleanVar()
     ctk.CTkCheckBox(panel_ajustes, text="Start on PC Startup", variable=var_startup, **checkboxStyle).grid(row=8, column=0, columnspan=2, pady=10)
     
@@ -627,21 +510,16 @@ def mainPanel(mostrar): #ui menu
     button_frame.grid(row=9, column=0, columnspan=2, pady=10, padx=0)
     ctk.CTkButton(button_frame, text="▸ Save Settings", command=guardar_configuracion, **button_style_2).grid(row=9, column=0, pady=10, padx=15)
     
-    if(wallpaperPath):
-        ctk.CTkButton(button_frame, text="▸ Debug Console", command=lambda: console_visibility(3), **button_style_2).grid(row=9, column=1, pady=10, padx=15)
-        ctk.CTkButton(button_frame, text="▸ Wallpaper Folder", command=lambda: openLink(f'{wallpaperPath}\\files\\info'), **button_style_2).grid(row=9, column=2, padx=15, pady=10)
-    else:
-        ctk.CTkButton(button_frame, text="▸ Tutorial", command=lambda: openLink(f'https://www.youtube.com/watch?v=1s-l17dJ2BE'), **button_style_2).grid(row=9, column=3, pady=10, padx=15)
+    
+    ctk.CTkButton(button_frame, text="▸ Debug Console", command=lambda: console_visibility(3), **button_style_2).grid(row=9, column=1, pady=10, padx=15)
+    #ctk.CTkButton(button_frame, text="▸ Tutorial", command=lambda: openLink(f'https://www.youtube.com/watch?v=1s-l17dJ2BE'), **button_style_2).grid(row=9, column=3, pady=10, padx=15)
     
 
     # --------------------
-    entry_directory.insert(0, wallpaperPath)
-    entry_latitude.insert(0, latitude)
-    entry_longitude.insert(0, longitude)
     var_startup.set(start_on_startup)
-    var_fahrenheit.set(fahrenheit)
 
-    # cup usage
+
+    # cpu usage
     threading.Thread(target=obtener_info, daemon=True).start()
 
     if (mostrar):# show specific panel
@@ -662,18 +540,16 @@ def preLoad():#load settings before start the program
     settings = load_settings(file_path)
 
     if not settings:
-        mainPanel("panel_ajustes")  # just open settings if there are no saved settings
+        mainPanel("panel_inicio")  # just open settings if there are no saved settings
     menu()
 
 def start_threads():# start cpu/ram/weather update threads
         global running
         cpuUsage = threading.Thread(target=obtener_info)
-        weatherRefresh = threading.Thread(target=weather)
         
         if not cpuUsage.is_alive():
             running = True
             cpuUsage.start()
-            weatherRefresh.start()
         else:
             pass
 
@@ -694,18 +570,38 @@ def menu():# generate try icon
         print_Error("Resource 'icon.ico' not found")
     #icon = pystray.Icon("name", Image.new("RGB", (64, 64), (255, 0, 0)), "Widgets Project", menu)
 
-    ## start monitor and weather threads
+    ## start monitor
     start_threads()
 
     icon.run()
 
+# flask ################################################################################
+app = Flask(__name__)
+CORS(app)
+
+# display cpu ram usage
+@app.route('/usage', methods=['GET'])
+def get_usage():
+    global PcUsage
+    return PcUsage
+
+# display notes
+@app.route('/notes', methods=['GET'])
+def get_notes():
+    global tasks
+    return json.dumps(tasks, ensure_ascii=False)
+
+def run_flask_app():
+    app.run(host='127.0.0.1', port=5000)
 
 if __name__ == "__main__":
     try:
         console_visibility(2)
         currentPath = obtain_current_dir()
-
+        threading.Thread(target=run_flask_app).start() # start flask thread
         preLoad()  # load settings
         menu()  # display tryicon menu
+        
+
     except Exception as e: 
         print_Error(e)
