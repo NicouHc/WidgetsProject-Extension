@@ -23,7 +23,7 @@ from tkinter import colorchooser
 
 
 """
-Latest Changelog (06/10/2024):
+Latest Changelog (21/10/2024):
 
 [ 2.0.2 ]==========================================
 - new todo-list
