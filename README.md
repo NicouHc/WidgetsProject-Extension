@@ -2,12 +2,15 @@
 
 ## Description
 
-**Widgets Project Extension** is an executable that complements [Widgets Project Wallpaper](https://steamcommunity.com/sharedfiles/filedetails/?id=3137947556) of Wallpaper Engine and that allows you to access more options for your widgets, system information, weather updates and to-do notes. These widgets update in real time and are highly configurable through an intuitive settings panel.
+**Widgets Project Extension** is an executable that complements [Widgets Project Wallpaper](https://steamcommunity.com/sharedfiles/filedetails/?id=3137947556) of Wallpaper Engine and that allows you to access more options for your widgets, system information and to-do notes. These widgets update in real time and are highly configurable through an intuitive settings panel.
 
 ## Features
 
 - **CPU and RAM Monitoring**: Displays real-time CPU and RAM usage.
-- **Task Notes**: Manage your notes directly from the Extension.
+- **Battery Charge**: Displays current Battery Charge percent.
+- **ToDo Notes**: Manage your notes directly from the Extension.
+- **Shortcuts**: Create and display your own shortcuts inside the wallpaper.
+- **Search Bar**: Just a search bar for find information.
 - **Easy Configuration**: Customize the project settings through a user-friendly graphical interface.
 
 ## How It Works

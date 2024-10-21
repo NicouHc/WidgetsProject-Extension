@@ -13,9 +13,14 @@ import customtkinter as ctk
 from PIL import Image
 import winreg
 import sys
+import logging
 
-from flask import Flask
+
+from flask import Flask, request
 from flask_cors import CORS
+
+from tkinter import colorchooser
+
 
 """
 Latest Changelog (06/10/2024):
@@ -42,26 +47,40 @@ Latest Changelog (06/10/2024):
 - weather is now integrated inside the wallpaper
 - added battery display in usage
 
+[ 2.0.6 ]==========================================
+- Added some prints in __main__ to more easily monitor possible errors
+- Removed LocalHost request prints 
+- small style changes in menu
+- added version on window title
+- added Search browser function
+- added Shortcuts menu
 """
 
 # -----------------------
 # define var
 running = True
-global start_on_startup, settings, PcUsage
+global start_on_startup, settings, PcUsage, start_time, color_shortcut
 
 settings = ""
 start_on_startup = False 
 tasks = [] 
-version = "2.0.5"
+shortcuts = [] 
+version = "2.0.6"
 PcUsage = [0, 0]
+color_shortcut = "#AB886D"
 
-global consoleVisibility
+global consoleVisibility, broweserSearch
 consoleVisibility = False
 
+broweserSearch = "https://www.google.com/search?q=" 
+# some examples:  https://duckduckgo.com/?&q= | https://www.bing.com/search?q= | https://search.yahoo.com/search?p= | https://search.aol.com/aol/search?q=
+
+
+
 # GeneralFunctions ########################################################################
-def openLink(link):# Open Links
-    if "https://" in link: #open links
-        os.system(f'start {link}')
+def openLink(link):# Open stuff
+    if ("https://" in link or "http://" in link): #open links
+        os.system(f'start "" "{link}"')
     else:#open directory
         os.startfile(os.path.realpath(link))
         
@@ -92,9 +111,9 @@ def console_visibility(var): # change consolve visibility
 
 def print_Error(e):# show error with format
     console_visibility(1)
-    os.system("title Widgets Project && cls")
-    print("")
-    print(style.RED + " [i] An error occurred " + style.ENDC);
+    os.system(f"title Widgets Project v{version} && cls")
+    print(style.RED + "\n *" + style.ENDC +" An error occurred " + style.RED + f"\n ------------------------------------" + style.ENDC);
+    
     print("")
     print(style.DIV + "|                                                                            |"+ style.ENDC)
     print("")
@@ -124,6 +143,32 @@ def obtain_current_dir():# define current path
     else:
         # if file is .py script
         return os.path.dirname(os.path.abspath(__file__))
+
+def defineStartupTime():# define the PC startup time 
+    def Get_Pid():
+        # note: use the sihost process start time to define when the pc startup because psutil.boot_time() display the time wrong 
+        for proc in psutil.process_iter(['pid', 'name']):
+            if proc.info['name'] == 'sihost.exe':
+                return proc.info['pid']
+
+    global start_time
+    start_time = psutil.Process(Get_Pid()).create_time()
+
+def wrap_text(text, line_length):# prevent text overflows (tasklist / shortcuts)
+    words = text.split()
+    lines = []
+    current_line = ""
+    for word in words:
+        if len(current_line + word) <= line_length:
+            current_line += word + " "
+        else:
+            lines.append(current_line.strip())
+            current_line = word + " "
+    
+    if current_line:
+        lines.append(current_line.strip())
+    return "\n".join(lines)
+
 
 
 # Notes Functions #########################################################################
@@ -179,22 +224,6 @@ def display_tasks():# display task in main panel
             })
             tasks[index] = task 
         
-        # Checkbox para la tarea
-        def wrap_text(text, line_length):
-            words = text.split()
-            lines = []
-            current_line = ""
-            for word in words:
-                if len(current_line + word) <= line_length:
-                    current_line += word + " "
-                else:
-                    lines.append(current_line.strip())
-                    current_line = word + " "
-            
-            if current_line:
-                lines.append(current_line.strip())
-            return "\n".join(lines)
-
         # Verificar si task es un diccionario con la clave 'text'
         if isinstance(task, dict) and 'text' in task:
             task_frame = ctk.CTkFrame(master=task_list, **frame_Style)
@@ -229,16 +258,83 @@ def display_tasks():# display task in main panel
         else:
             print("invalid format: " + str(task))
 
-  
+
+
+# Notes Functions #########################################################################
+def add_shortcut(icon, directory, shortcut_name, color):
+    global shortcuts
+    if directory and shortcut_name and icon:
+        directory = directory.replace("\\", "/")
+        shortcuts.append({'icon': icon, 'name': f"{shortcut_name}", 'directory': f'{directory}', 'color':  f'{color}'})
+
+        save_settings(currentPath + '/settings.json', settings)
+        display_shortcut()
+
+def delete_shortcut(index):# delete task
+    del shortcuts[index]
+
+    save_settings(currentPath + '/settings.json', settings)
+    display_shortcut()
+
+def display_shortcut():
+    global shortcuts
+    icon_close = ctk.CTkImage(Image.open("./resources/close.png"), size=(30, 30))
+    
+    button_style = {
+        "text_color": "white",
+        "fg_color": "transparent",
+        "hover_color": "#171a21",
+        "corner_radius": 0,
+        "compound": "left",
+        "anchor": "w",
+        "image": icon_close,
+        "width": 30,
+    }
+    frame_Style = {
+        "fg_color": "#12151a",        
+        "corner_radius": 5,
+        "border_width": 1.5,
+        "border_color": "#565b5e",
+        "width": 300,  # Ancho del Frame
+        "height": 100,  # Altura del Frame
+    }
+
+
+    for e in shortcuts_list.winfo_children():
+        e.destroy()
+
+    for index, shortcut in enumerate(shortcuts):
+        
+        # Verificar si task es un diccionario con la clave 'text'
+        if isinstance(shortcut, dict) and 'directory' in shortcut:
+            shrcut_frame = ctk.CTkFrame(shortcuts_list, **frame_Style)
+            shrcut_frame.pack(pady=5, padx=10, fill="x", expand=False)
+
+            #shrcut_text = wrap_text(f"{shortcut['name']} - {shortcut['directory']}", 80)
+
+            ee = ctk.CTkLabel(shrcut_frame, text=wrap_text(shortcut['name'], 50), text_color="#ffffff", font=ctk.CTkFont(size=13), width=370)
+            ee.pack(side="left", padx=15, pady=3) 
+
+            #ee = ctk.CTkLabel(master=shrcut_frame, text=wrap_text(shortcut['directory'], 80), text_color="#ffffff", font=ctk.CTkFont(size=9))
+            #ee.pack(side="left", padx=0, pady=3) 
+
+
+            delete_button = ctk.CTkButton(shrcut_frame, text="", command=lambda i=index: delete_shortcut(i), **button_style)
+            delete_button.pack(side="right", padx=2, pady=3) 
+        else:
+            print("invalid format: " + str(shortcut))
+
 # Settings Functions ######################################################################
 def load_settings(file_path):#  load json settings
     if os.path.exists(file_path):
         with open(file_path, 'r') as file:
-            global start_on_startup, tasks, settings
+            global start_on_startup, tasks, settings, broweserSearch, shortcuts
 
             settings = json.load(file)
             start_on_startup = settings.get('start_on_startup', False)
             tasks = settings.get('todo_list', [])
+            shortcuts = settings.get('shortcuts_list', [])
+            broweserSearch = settings.get('browser', "https://www.google.com/search?q=")
             return settings
     else:
         return None
@@ -277,15 +373,27 @@ def set_startup(enable):# define start program on pc startup
         print_Error("Startup setting error - Reg key not found \n" + str(e))
 
 
+
 # Update Info functions ###################################################################
 def obtener_info(intervalo=1):# computer usage
-    global running
+    def startup():
+        global start_time
+        current_time = time.time()
+        
+        # Calcular el tiempo transcurrido desde el arranque
+        elapsed_time = current_time - start_time
+        
+        # Convertir a horas y minutos
+        mins, sec = divmod(elapsed_time, 60)
+        hour, mins = divmod(mins, 60)
+        return hour, mins
+    
     while running:
-
-        global uso_cpu, uso_ram, battery
         uso_cpu = psutil.cpu_percent(interval=intervalo)
         uso_ram = psutil.virtual_memory().percent
         battery = psutil.sensors_battery()
+        upTime = startup()
+
         
         if(battery):
             battery = battery.percent
@@ -294,19 +402,23 @@ def obtener_info(intervalo=1):# computer usage
 
         # Generate array
         global PcUsage
-        PcUsage = f"[{uso_cpu }, {uso_ram}, {battery}]"
+        PcUsage = f"[{uso_cpu}, {uso_ram}, {battery}, {upTime[0]}, {upTime[1]}]"
         time.sleep(1)  # zzz
+
 
 
 # MAIN WINDOW #############################################################################
 def mainPanel(mostrar): #ui menu
     def guardar_configuracion():# function save text input in to json
-        global start_on_startup, settings
+        global start_on_startup, settings, broweserSearch, shortcuts
         start_on_startup = var_startup.get()
+        broweserSearch = entry_browser.get()
         
         settings = {
             "start_on_startup": start_on_startup,
-            "todo_list": tasks
+            "browser": broweserSearch,
+            "todo_list": tasks,
+            "shortcuts_list": shortcuts
         }
         save_settings(currentPath + '/settings.json', settings) # save settings json
         set_startup(start_on_startup)  # config startup
@@ -317,11 +429,13 @@ def mainPanel(mostrar): #ui menu
         if(settings == ""): # Avoid exiting the setup menu when defining settings for the first time
             settings = {
                 "start_on_startup": start_on_startup,
-                "todo_list": tasks
+                "browser": broweserSearch,
+                "todo_list": tasks,
+                "shortcuts_list": shortcuts
             }
             save_settings(currentPath + '/settings.json', settings)
             
-        for p in [panel_inicio, panel_notas, panel_ajustes]:
+        for p in [panel_inicio, panel_notas, panel_ajustes, panel_shortcuts]:
             p.pack_forget()
         panel.pack(fill='both', expand=True)
     
@@ -332,18 +446,28 @@ def mainPanel(mostrar): #ui menu
         """
         
     root = ctk.CTk()
-    root.title("WidgetsProject Extension")
+    root.title(f"WidgetsProject Extension v{version}")
     root.geometry("750x400")
     root.resizable(False, False)
     root.iconbitmap(currentPath + "./resources/icon.ico") 
-    root._fg_color = "#171a21"
+    
     
     main_container = ctk.CTkFrame(root)
     main_container.pack(fill='both', expand=True)
+    main_container._fg_color = "#12151a"
 
     # lateral bar
     sidebar = ctk.CTkFrame(main_container, width=200, corner_radius=0, fg_color="#12151a")
     sidebar.pack(side='left', fill='y')
+
+    rbar = ctk.CTkFrame(main_container, width=10, corner_radius=0, fg_color="#12151a")
+    rbar.pack(side='right', fill='y')
+
+    topbar = ctk.CTkFrame(main_container, height=10, corner_radius=0, fg_color="#12151a")
+    topbar.pack(side='top', fill='x')
+
+    bottombar = ctk.CTkFrame(main_container, height=10, corner_radius=0, fg_color="#12151a")
+    bottombar.pack(side='bottom', fill='x')
 
     # logo
     logo_image = ctk.CTkImage(Image.open("./resources/icon.ico"), size=(40, 40))
@@ -358,7 +482,7 @@ def mainPanel(mostrar): #ui menu
         "fg_color": "transparent",   # Color de fondo 
         "hover_color": "#171a21",    # Color mouse hover
         "corner_radius": 10,         # Border radius
-        "height": 50,                # button height
+        "height": 40,                # button height
         "compound": "left",          # Icon position
         "anchor": "w",               # Text Align
     }
@@ -375,13 +499,14 @@ def mainPanel(mostrar): #ui menu
     }
     mini_Panel_Style = {
         "fg_color": "#171a21",        
-        "corner_radius": 0,     
+        "corner_radius": 10,     
     }
     text_input_Style = {
         "fg_color": "#12151a",        
         "corner_radius": 5,
         "border_width": 1.5,
-        "border_color": "#565b5e"
+        "border_color": "#565b5e",
+        "text_color": "#ffffff"
     }
     button_style_new_Version = {
         "text_color": "white",
@@ -404,6 +529,17 @@ def mainPanel(mostrar): #ui menu
         "border_width": 1.5,
         "border_color": "#565b5e"
     }
+    comboBoxStyle ={
+        "fg_color": "#12151a",        
+        "corner_radius": 5,
+        "border_width": 1.5,
+        "border_color": "#565b5e",
+        "text_color": "#ffffff",
+        "dropdown_fg_color": "#12151a",
+        "dropdown_text_color": "#ffffff",
+        "dropdown_hover_color": "#565b5e",
+     
+    }
     
     # define icons
     icon_inicio = ctk.CTkImage(Image.open("./resources/icon_inicio.png"), size=(20, 20))
@@ -411,6 +547,7 @@ def mainPanel(mostrar): #ui menu
     icon_ajustes = ctk.CTkImage(Image.open("./resources/icon_ajustes.png"), size=(20, 20))
     icon_exit = ctk.CTkImage(Image.open("./resources/icon_exit.png"), size=(20, 20))
     icon_new = ctk.CTkImage(Image.open("./resources/new.png"), size=(20, 20))
+    icon_folder = ctk.CTkImage(Image.open("./resources/icon_folder.png"), size=(20, 20))
     
     # Crear los botones de la barra lateral con estilo personalizado 
     btn_inicio = ctk.CTkButton(sidebar, text="Home", image=icon_inicio, command=lambda: show_panel(panel_inicio), **button_style)
@@ -419,15 +556,22 @@ def mainPanel(mostrar): #ui menu
     btn_notas = ctk.CTkButton(sidebar, text="Notes", image=icon_notas, command=lambda: show_panel(panel_notas), **button_style)
     btn_notas.pack(fill='x', padx=10, pady=5)
 
+    btn_notas = ctk.CTkButton(sidebar, text="Shortcuts", image=icon_folder, command=lambda: show_panel(panel_shortcuts), **button_style)
+    btn_notas.pack(fill='x', padx=10, pady=5)
+
     btn_ajustes = ctk.CTkButton(sidebar, text="Settings", image=icon_ajustes, command=lambda: show_panel(panel_ajustes), **button_style)
     btn_ajustes.pack(fill='x', padx=10, pady=5)
 
-    btn_exit = ctk.CTkButton(sidebar, text="EXIT APP", image=icon_exit, command=exit_app,  **button_style)
+    btn_exit = ctk.CTkButton(sidebar, text="",   fg_color="#12151a", hover_color="#12151a", height=2)
     btn_exit.pack(fill='x', padx=10, pady=5, side='bottom')
+
+    btn_exit = ctk.CTkButton(sidebar, text="EXIT APP", image=icon_exit, command=exit_app,  **button_style)
+    btn_exit.pack(fill='x', padx=10, pady=3, side='bottom')
+    
 
     if(version != getCurrentVersion()): # if version is diferent than latest version -> display button
         btn_update = ctk.CTkButton(sidebar, text="New Version", image=icon_new, command=lambda: openLink("https://github.com/NicouHc/WidgetsProject-Extension"), **button_style_new_Version)
-        btn_update.pack(fill='x', padx=10, pady=5, side='bottom')
+        btn_update.pack(fill='x', padx=10, pady=3, side='bottom')
 
 
     # Home panel ------------------------------------------------------------------------------------------
@@ -480,7 +624,7 @@ def mainPanel(mostrar): #ui menu
     panel_notas_label.pack(pady=10)
 
     # Textbox para agregar nuevas tareas
-    task_entry = ctk.CTkEntry(panel_notas, height=60, **text_input_Style, text_color="#ffffff")
+    task_entry = ctk.CTkEntry(panel_notas, height=60, **text_input_Style)
     task_entry.pack(pady=10, padx=10)
 
     # Botón para agregar tareas
@@ -489,6 +633,69 @@ def mainPanel(mostrar): #ui menu
     
     display_tasks()# show tasks
     
+
+    # shortcuts Pannel  ------------------------------------------------------------------------------------------
+    
+    panel_shortcuts = ctk.CTkFrame(main_container, **mini_Panel_Style)
+    panel_shortcuts.pack(pady=10, padx=10, fill="both", expand=True)
+
+    # Título del panel
+    titleSettings = ctk.CTkLabel(panel_shortcuts, text="ShortCuts", text_color="white", font=ctk.CTkFont(size=20))
+    titleSettings.grid(row=0, column=0, pady=10, padx=10)  # Coloca el título en la primera fila y ocupa 3 columnas
+
+    # Frame para el canvas
+    canvas = ctk.CTkCanvas(panel_shortcuts, width=300, height=240, bg="#171a21", highlightthickness=0)
+    canvas.grid(row=1, column=0, columnspan=3, padx=20, pady=10, sticky="nsew")  # Usar columnspan para ocupar espacio
+
+    # Agregar una Scrollbar lateral al canvas
+    scrollbar = ctk.CTkScrollbar(panel_shortcuts, orientation="vertical", command=canvas.yview)
+    scrollbar.grid(row=1, column=2, sticky="ns")  # Coloca la scrollbar al lado derecho
+
+    # Configurar la scrollbar para el canvas
+    canvas.configure(yscrollcommand=scrollbar.set)
+
+    # Task frame
+    global shortcuts_list
+    shortcuts_list = ctk.CTkFrame(canvas, fg_color="transparent")  
+    shortcuts_list.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+
+    # Agregar el frame shortcuts_list al canvas como una ventana
+    canvas.create_window((0, 0), window=shortcuts_list, anchor="nw")
+
+    icons_shortcuts = ["Folder", "File", "Star", "Heart", "Pin", "Location", "Zap", "Trash", "Flower", "Coffe", "Bookmark", "Skull", "Lemon"]
+    shortcut_combo_box = ctk.CTkComboBox(panel_shortcuts, values=icons_shortcuts, **comboBoxStyle)
+    shortcut_combo_box.grid(row=2, column=0, pady=10, padx=10)
+
+    # name for shortcut
+    shortcut_name = ctk.CTkEntry(panel_shortcuts, height=30, **text_input_Style, placeholder_text="Shortcut Name")
+    shortcut_name.grid(row=2, column=1, pady=10, padx=10)
+
+    # shortcut color
+    def choose_color():
+        global color_shortcut
+        # open color selector
+        color_shortcut = colorchooser.askcolor()[1]
+        if color_shortcut:
+            color_button.configure(text=f"{color_shortcut}", text_color=color_shortcut)
+
+    color_button = ctk.CTkButton(panel_shortcuts, text="Choose Color", command=choose_color, **button_style_2)
+    color_button.grid(row=3, column=0, pady=10, padx=10)
+
+    # directory shortcut
+    shortcut_directory = ctk.CTkEntry(panel_shortcuts, height=30, **text_input_Style, placeholder_text="Directory")
+    shortcut_directory.grid(row=3, column=1, pady=10, padx=10)
+
+    # add shortcut
+    global color_shortcut
+    add_button = ctk.CTkButton(panel_shortcuts, text="+ Add Shortcut", **button_style_2, command=lambda: add_shortcut(shortcut_combo_box.get(), shortcut_directory.get(), shortcut_name.get(), color_shortcut))
+    add_button.grid(row=3, column=2, pady=10, padx=10)
+
+    panel_shortcuts.grid_rowconfigure(1, weight=1)  
+    panel_shortcuts.grid_columnconfigure(0, weight=1) 
+
+    display_shortcut()
+
+
 
     # Settings Pannel  ------------------------------------------------------------------------------------------
     panel_ajustes = ctk.CTkFrame(main_container, **mini_Panel_Style)
@@ -504,12 +711,19 @@ def mainPanel(mostrar): #ui menu
     divider.grid(row=3, column=2, sticky="ew", padx=0, pady=10)
 
     var_startup = ctk.BooleanVar()
-    ctk.CTkCheckBox(panel_ajustes, text="Start on PC Startup", variable=var_startup, **checkboxStyle).grid(row=8, column=0, columnspan=2, pady=10)
+    ctk.CTkCheckBox(panel_ajustes, text="Start on PC Startup", variable=var_startup, **checkboxStyle).grid(row=6, column=0, columnspan=2, pady=10)
+
+    # browser setting
+    ctk.CTkLabel(panel_ajustes, text="Browser:", text_color="white").grid(row=4, column=0, padx=10, pady=5)
+    entry_browser = ctk.CTkEntry(panel_ajustes, width=250, **text_input_Style)  
+    entry_browser.grid(row=4, column=1, padx=10, pady=5)
     
+    global broweserSearch
+    entry_browser.insert(0, broweserSearch)
+
     button_frame = ctk.CTkFrame(panel_ajustes, **mini_Panel_Style)
     button_frame.grid(row=9, column=0, columnspan=2, pady=10, padx=0)
     ctk.CTkButton(button_frame, text="▸ Save Settings", command=guardar_configuracion, **button_style_2).grid(row=9, column=0, pady=10, padx=15)
-    
     
     ctk.CTkButton(button_frame, text="▸ Debug Console", command=lambda: console_visibility(3), **button_style_2).grid(row=9, column=1, pady=10, padx=15)
     #ctk.CTkButton(button_frame, text="▸ Tutorial", command=lambda: openLink(f'https://www.youtube.com/watch?v=1s-l17dJ2BE'), **button_style_2).grid(row=9, column=3, pady=10, padx=15)
@@ -533,6 +747,54 @@ def mainPanel(mostrar): #ui menu
 
     root.mainloop()
 
+def searchPanel():
+
+    def search_info():
+        global broweserSearch
+        openLink(f'{broweserSearch}{search_entry.get()}')
+        root.destroy()
+
+    # Crear la ventana principal
+    root = ctk.CTk()
+    root.title(f"WidgetsProject Extension v{version} - Search")
+    root.geometry("400x80")
+    root.resizable(False, False)
+    root.iconbitmap(currentPath + "./resources/icon.ico") 
+    
+    main_container2 = ctk.CTkFrame(root, fg_color="#12151a")
+    main_container2.pack(fill='both', expand=True)
+
+
+    # Campo de entrada de búsqueda
+    text_input_Style = {
+        "fg_color": "#12151a",        
+        "corner_radius": 5,
+        "border_width": 1.5,
+        "border_color": "#565b5e",
+        "text_color": "white",
+    }
+
+    search_buton = {
+        "width": 40, 
+        "height": 40, 
+        "fg_color": "#12151a",
+
+        "border_width": 1.5,
+        "border_color": "#565b5e",
+
+        "hover_color": "#22242b"
+    }
+
+    search_entry = ctk.CTkEntry(main_container2, width=300, height=40, placeholder_text="Search...", **text_input_Style)
+    search_entry.grid(row=1, column=0, pady=20, padx=20)
+
+    # Botón de búsqueda
+    icon_search = ctk.CTkImage(Image.open("./resources/icon_search.png"), size=(20, 20))
+    search_button = ctk.CTkButton(main_container2, text="", image=icon_search, command=search_info, **search_buton)
+    search_button.grid(row=1, column=1, pady=10, padx=0)
+
+    # Iniciar la ventana
+    root.mainloop()
 
 # START ALL ################################################################################
 def preLoad():#load settings before start the program
@@ -540,9 +802,9 @@ def preLoad():#load settings before start the program
     settings = load_settings(file_path)
 
     if not settings:
+        print(style.RED + " *  ? " + style.ENDC + " Settings Not Found\n")
         mainPanel("panel_inicio")  # just open settings if there are no saved settings
-    menu()
-
+    
 def start_threads():# start cpu/ram/weather update threads
         global running
         cpuUsage = threading.Thread(target=obtener_info)
@@ -553,12 +815,12 @@ def start_threads():# start cpu/ram/weather update threads
         else:
             pass
 
-def menu():# generate try icon 
-    os.system("title Widgets Project && cls")
+def tricon():# generate try icon 
     # tryicon
     menu = (
         item('Info',  lambda:mainPanel("panel_inicio")),
         item('Notes',   lambda:mainPanel("panel_notas")),
+         
         item('Settings', lambda:mainPanel("panel_ajustes")),
         item('Exit',   exit_app)
     )
@@ -574,6 +836,8 @@ def menu():# generate try icon
     start_threads()
 
     icon.run()
+
+
 
 # flask ################################################################################
 app = Flask(__name__)
@@ -591,17 +855,72 @@ def get_notes():
     global tasks
     return json.dumps(tasks, ensure_ascii=False)
 
+# display shortcuts
+@app.route('/shortcuts', methods=['GET'])
+def get_shortcuts():
+    global shortcuts
+    return json.dumps(shortcuts, ensure_ascii=False)
+
+# open folders
+@app.route('/openStuff', methods=['POST'])
+def open_stuff():
+    data = request.get_json().get("data")  # obtain folder to open
+
+    if(data == "Search"): #open mini browser
+        searchPanel()
+
+    elif(data == "Desktop"):
+        path = os.path.join(os.environ['USERPROFILE'], 'Desktop')
+        openLink(path)
+
+    elif(data == "Documents"):
+        path = os.path.join(os.environ['USERPROFILE'], 'Documents')
+        openLink(path)
+
+    elif(data == "Downloads"):
+        path = os.path.join(os.environ['USERPROFILE'], 'Downloads')
+        openLink(path)
+    
+    elif(data == "Terminal"):
+        os.system("start cmd")
+
+    else:
+        openLink(data)
+
+    return("1")
+
+# run localhost
 def run_flask_app():
     app.run(host='127.0.0.1', port=5000)
 
+
+
+# main ################################################################################
 if __name__ == "__main__":
     try:
+   
+        os.system(f"title Widgets Project v{version} && cls")
+        print(style.RED + f"\n - Widgets Project Extension v{version}\n ------------------------------------ \n" + style.ENDC)
+
+        print(style.RED + " * 1/6" + style.ENDC + " Console Visibility")
         console_visibility(2)
+
+        print(style.RED + " * 2/6" + style.ENDC +  " Current Path")
         currentPath = obtain_current_dir()
+
+        print(style.RED + " * 3/6" + style.ENDC +  " Define Startup Time")
+        defineStartupTime()
+
+        print(style.RED + " * 4/6" + style.ENDC +  " LocalHost sv")
+        logger = logging.getLogger('werkzeug')
+        logger.setLevel(logging.ERROR)  # prevent show  flask requests messages in debug console
         threading.Thread(target=run_flask_app).start() # start flask thread
+
+        print(style.RED + " * 5/6" + style.ENDC +  " .json settings")
         preLoad()  # load settings
-        menu()  # display tryicon menu
-        
+
+        print(style.RED + "\n * 6/6" + style.ENDC +  " tryicon menu\n")
+        tricon()  # display tryicon menu
 
     except Exception as e: 
         print_Error(e)
