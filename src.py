@@ -23,7 +23,7 @@ from tkinter import colorchooser
 
 
 """
-Latest Changelog (21/10/2024):
+Latest Changelog (24/10/2024):
 
 [ 2.0.2 ]==========================================
 - new todo-list
@@ -54,6 +54,10 @@ Latest Changelog (21/10/2024):
 - added version on window title
 - added Search browser function
 - added Shortcuts menu
+
+[ 2.0.7 ]==========================================
+- Fixed startup option
+
 """
 
 # -----------------------
@@ -65,7 +69,7 @@ settings = ""
 start_on_startup = False 
 tasks = [] 
 shortcuts = [] 
-version = "2.0.6"
+version = "2.0.7"
 PcUsage = [0, 0]
 color_shortcut = "#AB886D"
 
@@ -260,7 +264,7 @@ def display_tasks():# display task in main panel
 
 
 
-# Notes Functions #########################################################################
+# shortcuts Functions ######################################################################
 def add_shortcut(icon, directory, shortcut_name, color):
     global shortcuts
     if directory and shortcut_name and icon:
@@ -324,6 +328,8 @@ def display_shortcut():
         else:
             print("invalid format: " + str(shortcut))
 
+
+
 # Settings Functions ######################################################################
 def load_settings(file_path):#  load json settings
     if os.path.exists(file_path):
@@ -344,8 +350,9 @@ def save_settings(file_path, settings):# save json
         json.dump(settings, file, indent=4)
 
 def set_startup(enable):# define start program on pc startup
-    script_path = currentPath  # Obtain .exe path
-    
+    script_path = currentPath + "\\" + os.path.basename(sys.argv[0]) # Obtain .exe path
+    print(script_path)
+
     key = r"Software\\Microsoft\\Windows\\CurrentVersion\\Run"
     value = "WidgetsProjectExtension"  # define registry name
 
@@ -795,6 +802,8 @@ def searchPanel():
 
     # Iniciar la ventana
     root.mainloop()
+
+
 
 # START ALL ################################################################################
 def preLoad():#load settings before start the program
