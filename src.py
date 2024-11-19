@@ -61,6 +61,7 @@ Latest Changelog (19/11/2024):
 - Shortcuts now support executable files (images/.exe/etc)
 - Fixed resources not found at startup (use load_icons function while images resource not found)
 
+
 """
 
 #os.chdir("C:/") # test startup resource not found
