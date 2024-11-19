@@ -10,7 +10,7 @@ import pystray
 from pystray import MenuItem as item
 import ctypes
 import customtkinter as ctk
-from PIL import Image
+from PIL import Image, ImageDraw
 import winreg
 import sys
 import logging
@@ -21,9 +21,8 @@ from flask_cors import CORS
 
 from tkinter import colorchooser
 
-
 """
-Latest Changelog (24/10/2024):
+Latest Changelog (19/11/2024):
 
 [ 2.0.2 ]==========================================
 - new todo-list
@@ -58,7 +57,13 @@ Latest Changelog (24/10/2024):
 [ 2.0.7 ]==========================================
 - Fixed startup option
 
+[ 2.0.8 ]==========================================
+- Shortcuts now support executable files (images/.exe/etc)
+- Fixed resources not found at startup (use load_icons function while images resource not found)
+
 """
+
+#os.chdir("C:/") # test startup resource not found
 
 # -----------------------
 # define var
@@ -69,7 +74,7 @@ settings = ""
 start_on_startup = False 
 tasks = [] 
 shortcuts = [] 
-version = "2.0.7"
+version = "2.0.8"
 PcUsage = [0, 0]
 color_shortcut = "#AB886D"
 
@@ -83,10 +88,15 @@ broweserSearch = "https://www.google.com/search?q="
 
 # GeneralFunctions ########################################################################
 def openLink(link):# Open stuff
-    if ("https://" in link or "http://" in link): #open links
+    if link.startswith(("https://", "http://")):  # open links
         os.system(f'start "" "{link}"')
-    else:#open directory
+    elif os.path.isdir(link):  # open directorys
         os.startfile(os.path.realpath(link))
+    elif os.path.isfile(link):  # open files
+        os.startfile(link)
+    else:
+        print(f"Error at open: {link}.")
+
         
 class style():# class styles for console message with colors 
     RED = '\033[31m'
@@ -173,6 +183,51 @@ def wrap_text(text, line_length):# prevent text overflows (tasklist / shortcuts)
         lines.append(current_line.strip())
     return "\n".join(lines)
 
+def load_icons(path, size=(20, 20)):# prevent error image not found
+ 
+        if os.path.exists(path):
+            return ctk.CTkImage(Image.open(path), size=size)
+        
+        else:
+            print(style.RED + f"> Error at load the image: {path}" + style.ENDC)
+
+            imagen = Image.new("RGBA", size, (0, 0, 0, 0)) 
+            draw = ImageDraw.Draw(imagen)
+            
+            if size==(20, 20):#others
+                pass
+
+            elif size==(30, 30): # close button
+                line_color = (149,154,158,140)  # grey
+                
+                # Coordenadas para dibujar la X
+                x1, y1 = 10, 10
+                x2, y2 = size[0] - 10, size[1] - 10
+                x3, y3 = 10, size[1] - 10
+                x4, y4 = size[0] - 10, 10
+                
+                # Dibujar las dos líneas de la X
+                draw.line([x1, y1, x2, y2], fill=line_color, width=3)
+                draw.line([x3, y3, x4, y4], fill=line_color, width=3)
+                
+            else:#banner
+                draw.rectangle([0, 0, size[0], size[1]], fill="#12151a") 
+
+            return ctk.CTkImage(imagen, size=size)
+
+def generateHeartIcon():# generate heart icon for tryicon
+    img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+
+    draw = ImageDraw.Draw(img)
+
+    # Dibujar un corazón en la imagen
+    heart_coords = [(32, 10), (48, 10), (56, 18), (56, 32), (48, 42), (32, 56), (16, 42), (8, 32), (8, 18), (16, 10)]
+
+    # draw heart
+    draw.polygon(heart_coords, fill=(255, 0, 0, 255))  
+
+    return img
+
 
 
 # Notes Functions #########################################################################
@@ -193,7 +248,8 @@ def toggle_task(index):# update checked status
 
 def display_tasks():# display task in main panel
     global tasks
-    icon_close = ctk.CTkImage(Image.open("./resources/close.png"), size=(30, 30))
+    icon_close = load_icons("./resources/close.png", size=(30, 30))
+    
     
     button_style = {
         "text_color": "white",
@@ -282,7 +338,7 @@ def delete_shortcut(index):# delete task
 
 def display_shortcut():
     global shortcuts
-    icon_close = ctk.CTkImage(Image.open("./resources/close.png"), size=(30, 30))
+    icon_close = load_icons("./resources/close.png", size=(30, 30))
     
     button_style = {
         "text_color": "white",
@@ -451,13 +507,15 @@ def mainPanel(mostrar): #ui menu
         os.remove(wallpaperPath + '/files/info/' + 'pc-info.js')
         os.remove(wallpaperPath + '/files/info/' + 'ToDoNotes.js')
         """
-        
+    
+      
     root = ctk.CTk()
     root.title(f"WidgetsProject Extension v{version}")
     root.geometry("750x400")
     root.resizable(False, False)
-    root.iconbitmap(currentPath + "./resources/icon.ico") 
-    
+    try:
+        root.iconbitmap(currentPath + "./resources/icon.ico") 
+    except:pass
     
     main_container = ctk.CTkFrame(root)
     main_container.pack(fill='both', expand=True)
@@ -477,7 +535,7 @@ def mainPanel(mostrar): #ui menu
     bottombar.pack(side='bottom', fill='x')
 
     # logo
-    logo_image = ctk.CTkImage(Image.open("./resources/icon.ico"), size=(40, 40))
+    logo_image = load_icons("./resources/icon.ico", size=(40, 40))
     logo_label = ctk.CTkLabel(sidebar, image=logo_image, text="")
     logo_label.pack(pady=(20, 10))
 
@@ -548,13 +606,14 @@ def mainPanel(mostrar): #ui menu
      
     }
     
+      
     # define icons
-    icon_inicio = ctk.CTkImage(Image.open("./resources/icon_inicio.png"), size=(20, 20))
-    icon_notas = ctk.CTkImage(Image.open("./resources/icon_notas.png"), size=(20, 20))
-    icon_ajustes = ctk.CTkImage(Image.open("./resources/icon_ajustes.png"), size=(20, 20))
-    icon_exit = ctk.CTkImage(Image.open("./resources/icon_exit.png"), size=(20, 20))
-    icon_new = ctk.CTkImage(Image.open("./resources/new.png"), size=(20, 20))
-    icon_folder = ctk.CTkImage(Image.open("./resources/icon_folder.png"), size=(20, 20))
+    icon_inicio = load_icons("./resources/icon_inicio.png")
+    icon_notas = load_icons("./resources/icon_notas.png")
+    icon_ajustes = load_icons("./resources/icon_ajustes.png")
+    icon_exit = load_icons("./resources/icon_exit.png")
+    icon_new = load_icons("./resources/new.png")
+    icon_folder = load_icons("./resources/icon_folder.png")
     
     # Crear los botones de la barra lateral con estilo personalizado 
     btn_inicio = ctk.CTkButton(sidebar, text="Home", image=icon_inicio, command=lambda: show_panel(panel_inicio), **button_style)
@@ -585,7 +644,8 @@ def mainPanel(mostrar): #ui menu
     panel_inicio = ctk.CTkFrame(main_container, **mini_Panel_Style)
 
     # Banner
-    banner_image = ctk.CTkImage(Image.open("./resources/banner.png"), size=(520, 150))
+    #banner_image = ctk.CTkImage(Image.open("./resources/banner.png"))
+    banner_image = load_icons("./resources/banner.png",  size=(520, 150))
     banner_label = ctk.CTkLabel(panel_inicio, image=banner_image, text=f"Version: {version}", text_color="white", font=ctk.CTkFont(family="Courier", size=16))
     banner_label.pack(pady=(30, 20))
 
@@ -838,8 +898,8 @@ def tricon():# generate try icon
         icon_image = Image.open(currentPath + "./resources/icon.ico")
         icon = pystray.Icon("name", icon_image, "Widgets Project", menu)
     except:
-        print_Error("Resource 'icon.ico' not found")
-    #icon = pystray.Icon("name", Image.new("RGB", (64, 64), (255, 0, 0)), "Widgets Project", menu)
+        #print_Error("Resource 'icon.ico' not found")
+        icon = pystray.Icon("name", generateHeartIcon(), "Widgets Project", menu)
 
     ## start monitor
     start_threads()
