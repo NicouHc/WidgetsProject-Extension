@@ -22,7 +22,7 @@ from flask_cors import CORS
 from tkinter import colorchooser
 
 """
-Latest Changelog (19/11/2024):
+Latest Changelog (19/01/2024):
 
 [ 2.0.2 ]==========================================
 - new todo-list
@@ -61,6 +61,8 @@ Latest Changelog (19/11/2024):
 - Shortcuts now support executable files (images/.exe/etc)
 - Fixed resources not found at startup (use load_icons function while images resource not found)
 
+[ 2.0.9 ]==========================================
+- Fixed possible error at check latest version
 
 """
 
@@ -75,7 +77,7 @@ settings = ""
 start_on_startup = False 
 tasks = [] 
 shortcuts = [] 
-version = "2.0.8"
+version = "2.0.9"
 PcUsage = [0, 0]
 color_shortcut = "#AB886D"
 
@@ -148,6 +150,7 @@ def getCurrentVersion():# return current version for notify updates
     try:
         content = requests.get(url).text
     except:
+        content = version
         pass
     return(content)
 
@@ -537,6 +540,7 @@ def mainPanel(mostrar): #ui menu
 
     # logo
     logo_image = load_icons("./resources/icon.ico", size=(40, 40))
+    #logo_image = ctk.CTkImage(generateHeartIcon(), size=(40, 40))
     logo_label = ctk.CTkLabel(sidebar, image=logo_image, text="")
     logo_label.pack(pady=(20, 10))
 
