@@ -14,6 +14,7 @@ from PIL import Image, ImageDraw
 import winreg
 import sys
 import logging
+import GPUtil
 
 
 from flask import Flask, request
@@ -442,36 +443,45 @@ def set_startup(enable):# define start program on pc startup
 
 
 # Update Info functions ###################################################################
-def obtener_info(intervalo=1):# computer usage
+def obtener_info(intervalo=1):
     def startup():
         global start_time
         current_time = time.time()
-        
         # Calcular el tiempo transcurrido desde el arranque
         elapsed_time = current_time - start_time
-        
         # Convertir a horas y minutos
         mins, sec = divmod(elapsed_time, 60)
         hour, mins = divmod(mins, 60)
         return hour, mins
-    
+
     while running:
         uso_cpu = psutil.cpu_percent(interval=intervalo)
         uso_ram = psutil.virtual_memory().percent
+        
         battery = psutil.sensors_battery()
         upTime = startup()
 
-        
-        if(battery):
+        if battery:
             battery = battery.percent
         else:
             battery = -1
+        
+        # Obtener información de la GPU usando GPUtil
+        gpus = GPUtil.getGPUs()
+        if gpus:
+            # En este ejemplo, se usa la primera GPU detectada
+            gpu = gpus[0]
+            gpu_usage = gpu.load * 100  # porcentaje de uso
+            gpu_mem_usage = (gpu.memoryUsed / gpu.memoryTotal) * 100 if gpu.memoryTotal else 0
+            gpu_info = f"{gpu_usage:.1f}"
+            # {gpu_mem_usage:.1f}% memory
+        else:
+            gpu_info = "0"
 
-        # Generate array
+        # Generar el arreglo de información
         global PcUsage
-        PcUsage = f"[{uso_cpu}, {uso_ram}, {battery}, {upTime[0]}, {upTime[1]}]"
+        PcUsage = f"[{uso_cpu}, {uso_ram}, {battery}, {upTime[0]}, {upTime[1]}, {gpu_info}]"
         time.sleep(1)  # zzz
-
 
 
 # MAIN WINDOW #############################################################################
