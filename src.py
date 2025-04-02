@@ -65,6 +65,9 @@ Latest Changelog (19/01/2024):
 [ 2.0.9 ]==========================================
 - Fixed possible error at check latest version
 
+[ 2.0.10 ]==========================================
+- Added GPU usage
+
 """
 
 #os.chdir("C:/") # test startup resource not found
