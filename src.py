@@ -81,7 +81,7 @@ settings = ""
 start_on_startup = False 
 tasks = [] 
 shortcuts = [] 
-version = "2.0.9"
+version = "2.0.10"
 PcUsage = [0, 0]
 color_shortcut = "#AB886D"
 
