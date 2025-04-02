@@ -6,7 +6,7 @@
 
 ## Features
 
-- **CPU and RAM Monitoring**: Displays real-time CPU and RAM usage.
+- **CPU, GPU and RAM Monitoring**: Displays real-time CPU, GPU and RAM usage.
 - **Battery Charge**: Displays current Battery Charge percent.
 - **ToDo Notes**: Manage your notes directly from the Extension.
 - **Shortcuts**: Create and display your own shortcuts inside the wallpaper.
