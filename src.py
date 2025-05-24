@@ -22,8 +22,8 @@ from flask_cors import CORS
 
 from tkinter import colorchooser
 
-"""
-Latest Changelog (19/01/2024):
+""" 
+ChangeLog
 
 [ 2.0.2 ]==========================================
 - new todo-list
@@ -68,6 +68,9 @@ Latest Changelog (19/01/2024):
 [ 2.0.10 ]==========================================
 - Added GPU usage
 
+[ 2.0.11 ]==========================================
+- fixed possible error at return GPU usage
+
 """
 
 #os.chdir("C:/") # test startup resource not found
@@ -81,7 +84,7 @@ settings = ""
 start_on_startup = False 
 tasks = [] 
 shortcuts = [] 
-version = "2.0.10"
+version = "2.0.11"
 PcUsage = [0, 0]
 color_shortcut = "#AB886D"
 
@@ -476,10 +479,21 @@ def obtener_info(intervalo=1):
             gpu = gpus[0]
             gpu_usage = gpu.load * 100  # porcentaje de uso
             gpu_mem_usage = (gpu.memoryUsed / gpu.memoryTotal) * 100 if gpu.memoryTotal else 0
+
+            # test force NaN
+            #gpu_usage = float('nan')
+            
+            #Prevent Nan Values
+            if gpu_usage != gpu_usage:
+                gpu_usage = 0
+            if gpu_mem_usage != gpu_mem_usage:
+                gpu_mem_usage = 0
+
             gpu_info = f"{gpu_usage:.1f}"
             # {gpu_mem_usage:.1f}% memory
         else:
             gpu_info = "0"
+
 
         # Generar el arreglo de información
         global PcUsage
