@@ -69,7 +69,13 @@ ChangeLog
 - Added GPU usage
 
 [ 2.0.11 ]==========================================
-- fixed possible error at return GPU usage
+- Fixed possible error at return GPU usage
+
+[ 2.0.12 ]==========================================
+- Prevent the extension from opening repeatedly. The checkExist() module now checks
+  to see if the application is already running and displays the menu when necessary.
+- small changes on preload console message
+
 
 """
 
@@ -84,7 +90,7 @@ settings = ""
 start_on_startup = False 
 tasks = [] 
 shortcuts = [] 
-version = "2.0.11"
+version = "2.0.12"
 PcUsage = [0, 0]
 color_shortcut = "#AB886D"
 
@@ -895,6 +901,20 @@ def searchPanel():
     # Iniciar la ventana
     root.mainloop()
 
+def checkExist():
+    try:
+        response = requests.get('http://127.0.0.1:5000/exist', timeout=3)
+        if response.status_code == 200:
+            print("Extension Already running, Closing Process")
+            exit_app()
+      
+    except requests.exceptions.RequestException as e:
+        #print("Error:", e)
+        pass
+    
+   
+
+
 
 
 # START ALL ################################################################################
@@ -903,7 +923,7 @@ def preLoad():#load settings before start the program
     settings = load_settings(file_path)
 
     if not settings:
-        print(style.RED + " *  ? " + style.ENDC + " Settings Not Found\n")
+        print(style.RED + "\n * 6/7 " + style.ENDC + " Settings Not Found\n")
         mainPanel("panel_inicio")  # just open settings if there are no saved settings
     
 def start_threads():# start cpu/ram/weather update threads
@@ -943,6 +963,12 @@ def tricon():# generate try icon
 # flask ################################################################################
 app = Flask(__name__)
 CORS(app)
+
+# open menu if already running
+@app.route('/exist', methods=['GET'])
+def exist():
+    threading.Thread(target=mainPanel, args=("panel_inicio",)).start()
+    return 'ok', 200
 
 # display cpu ram usage
 @app.route('/usage', methods=['GET'])
@@ -996,6 +1022,7 @@ def run_flask_app():
 
 
 
+
 # main ################################################################################
 if __name__ == "__main__":
     try:
@@ -1003,24 +1030,27 @@ if __name__ == "__main__":
         os.system(f"title Widgets Project v{version} && cls")
         print(style.RED + f"\n - Widgets Project Extension v{version}\n ------------------------------------ \n" + style.ENDC)
 
-        print(style.RED + " * 1/6" + style.ENDC + " Console Visibility")
+        print(style.RED + " * 1/7" + style.ENDC + " Console Visibility")
         console_visibility(2)
 
-        print(style.RED + " * 2/6" + style.ENDC +  " Current Path")
+        print(style.RED + " * 2/7" + style.ENDC + " Check if extension is already running")
+        checkExist()
+
+        print(style.RED + " * 3/7" + style.ENDC +  " Current Path")
         currentPath = obtain_current_dir()
 
-        print(style.RED + " * 3/6" + style.ENDC +  " Define Startup Time")
+        print(style.RED + " * 4/7" + style.ENDC +  " Define Startup Time")
         defineStartupTime()
 
-        print(style.RED + " * 4/6" + style.ENDC +  " LocalHost sv")
+        print(style.RED + " * 5/7" + style.ENDC +  " LocalHost sv")
         logger = logging.getLogger('werkzeug')
         logger.setLevel(logging.ERROR)  # prevent show  flask requests messages in debug console
         threading.Thread(target=run_flask_app).start() # start flask thread
 
-        print(style.RED + " * 5/6" + style.ENDC +  " .json settings")
+        print(style.RED + " * 6/7" + style.ENDC +  " .json settings")
         preLoad()  # load settings
 
-        print(style.RED + "\n * 6/6" + style.ENDC +  " tryicon menu\n")
+        print(style.RED + "\n * 7/7" + style.ENDC +  " tryicon menu\n")
         tricon()  # display tryicon menu
 
     except Exception as e: 
